@@ -2,8 +2,6 @@
 
 import { usePathname } from 'next/navigation';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
 
 const pageTitles: { [key: string]: string } = {
   '/': 'Dashboard',
@@ -23,12 +21,6 @@ export function Header() {
         <SidebarTrigger className="md:hidden" />
         <h1 className="text-xl font-semibold">{title}</h1>
       </div>
-      {pathname === '/transactions' && (
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Transaction
-        </Button>
-      )}
     </header>
   );
 }

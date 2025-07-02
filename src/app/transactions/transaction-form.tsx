@@ -162,7 +162,12 @@ export function TransactionForm({
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g. 5.50" {...field} />
+                    <Input
+                      type="number"
+                      placeholder="e.g. 5.50"
+                      {...field}
+                      value={field.value ?? ''}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

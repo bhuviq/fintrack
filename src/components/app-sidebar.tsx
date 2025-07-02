@@ -22,6 +22,7 @@ import {
   Settings,
   LogOut,
   Wallet,
+  Shapes,
 } from 'lucide-react';
 
 const navItems = [
@@ -30,6 +31,7 @@ const navItems = [
   { href: '/investments', label: 'Investments', icon: Briefcase },
   { href: '/budgets', label: 'Budgets', icon: PiggyBank },
   { href: '/goals', label: 'Goals', icon: Target },
+  { href: '/categories', label: 'Categories', icon: Shapes },
 ];
 
 export function AppSidebar() {

@@ -74,18 +74,26 @@ export function TransactionForm({
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
-      description: transaction?.description || '',
-      amount: transaction?.amount || undefined,
-      type: transaction?.type || 'expense',
-      date: transaction?.date ? new Date(transaction.date) : new Date(),
-      category: transaction?.category || '',
+      description: '',
+      amount: undefined,
+      type: 'expense',
+      date: new Date(),
+      category: '',
     },
   });
 
+  const transactionType = form.watch('type');
+
+  const availableCategories = React.useMemo(
+    () => MOCK_DATA.categories.filter((c) => c.type === transactionType),
+    [transactionType]
+  );
+  
   React.useEffect(() => {
     if (isOpen) {
       if (transaction) {
         form.reset({
+          id: transaction.id,
           description: transaction.description,
           amount: transaction.amount,
           type: transaction.type,
@@ -103,6 +111,13 @@ export function TransactionForm({
       }
     }
   }, [transaction, form, isOpen]);
+
+  React.useEffect(() => {
+    // When the transaction type changes, reset the category field
+    // as the available categories have changed.
+    form.setValue('category', '');
+  }, [transactionType, form]);
+
 
   const handleSubmit = (values: TransactionFormValues) => {
     onSubmit({ ...values, id: transaction?.id });
@@ -162,7 +177,7 @@ export function TransactionForm({
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                       className="flex space-x-4"
                     >
                       <FormItem className="flex items-center space-x-2 space-y-0">
@@ -232,7 +247,7 @@ export function TransactionForm({
                   <FormLabel>Category</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -240,9 +255,9 @@ export function TransactionForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {MOCK_DATA.categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                      {availableCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.name}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -23,6 +23,8 @@ export default function LoginPage() {
   const [loginIdentifier, setLoginIdentifier] = React.useState('');
 
   // Signup states
+  const [signupFirstName, setSignupFirstName] = React.useState('');
+  const [signupLastName, setSignupLastName] = React.useState('');
   const [signupEmail, setSignupEmail] = React.useState('');
   const [signupPhone, setSignupPhone] = React.useState('');
 
@@ -88,6 +90,8 @@ export default function LoginPage() {
                       onChange={(e) => {
                         setLoginIdentifier(e.target.value);
                         // Clear signup fields when user types in login
+                        setSignupFirstName('');
+                        setSignupLastName('');
                         setSignupEmail('');
                         setSignupPhone('');
                       }}
@@ -104,6 +108,34 @@ export default function LoginPage() {
             <TabsContent value="signup">
               <form onSubmit={handleSendOtp}>
                 <CardContent className="space-y-4 pt-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-first-name">First Name</Label>
+                      <Input
+                        id="signup-first-name"
+                        placeholder="John"
+                        required
+                        value={signupFirstName}
+                        onChange={(e) => {
+                          setSignupFirstName(e.target.value);
+                          setLoginIdentifier('');
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-last-name">Last Name</Label>
+                      <Input
+                        id="signup-last-name"
+                        placeholder="Doe"
+                        required
+                        value={signupLastName}
+                        onChange={(e) => {
+                          setSignupLastName(e.target.value);
+                          setLoginIdentifier('');
+                        }}
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
                     <Input

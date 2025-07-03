@@ -115,7 +115,7 @@ export default function LoginPage() {
             });
         }
     }
-  }, [isFirebaseConfigured, toast]);
+  });
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
@@ -189,8 +189,6 @@ export default function LoginPage() {
       setStep('otp');
     } catch (error: any) {
       console.error('Phone Sign-In Error:', error);
-      recaptchaVerifierRef.current?.clear();
-      recaptchaVerifierRef.current = null;
       toast({
         variant: 'destructive',
         title: 'SMS Sending Failed',

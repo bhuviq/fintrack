@@ -216,11 +216,11 @@ export default function BudgetsPage() {
             const remaining = budget.total - budget.spent;
 
             return (
-              <div key={budget.id} className="flex flex-col gap-2 p-4 border rounded-lg relative group">
+              <div key={budget.id} className="flex flex-col gap-2 p-4 border rounded-lg relative">
                  <div className="absolute top-2 right-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
                                 <MoreHorizontal className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -238,7 +238,7 @@ export default function BudgetsPage() {
                     </DropdownMenu>
                 </div>
                 <div className="flex justify-between items-baseline">
-                  <span className="font-semibold text-lg">{budget.category}</span>
+                  <span className="font-semibold text-lg pr-10">{budget.category}</span>
                   <span className="text-sm font-medium text-muted-foreground">
                     ${budget.spent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ${budget.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>

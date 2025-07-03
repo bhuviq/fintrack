@@ -141,7 +141,7 @@ export default function AccountsPage() {
                  if (account.type !== 'credit-card') return null;
                  const utilization = account.limit ? (Math.abs(account.currentBalance) / account.limit) * 100 : 0;
                 return (
-                  <Card key={account.id} className="flex flex-col group relative">
+                  <Card key={account.id} className="flex flex-col">
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <CardTitle>{account.name}</CardTitle>

@@ -163,11 +163,11 @@ export default function GoalsPage() {
           const percentage = goal.target > 0 ? (currentAmount / goal.target) * 100 : 0;
 
           return (
-            <Card key={goal.id} className="flex flex-col group relative">
+            <Card key={goal.id} className="flex flex-col relative">
                <div className="absolute top-2 right-2 z-10">
                   <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
                               <MoreHorizontal className="h-4 w-4" />
                           </Button>
                       </DropdownMenuTrigger>
@@ -193,7 +193,7 @@ export default function GoalsPage() {
                   </DropdownMenu>
               </div>
               <CardContent className="flex-1 p-6">
-                <CardTitle className="mb-2">{goal.name}</CardTitle>
+                <CardTitle className="mb-2 pr-10">{goal.name}</CardTitle>
                 <p className="text-2xl font-bold text-primary">
                   ${currentAmount.toLocaleString()}
                 </p>

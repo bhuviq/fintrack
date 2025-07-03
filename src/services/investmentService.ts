@@ -45,18 +45,16 @@ export const addInvestmentTransaction = async (investmentId: string, transaction
     
     if (investmentSnap.exists()) {
         const investment = investmentSnap.data() as Investment;
-        const newTransaction = { ...transaction, id: new Date().toISOString() };
-        const updatedHistory = [...(investment.history || []), newTransaction];
-
-        const newTotalQuantity = updatedHistory.reduce((acc, item) => {
-            return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
-        }, 0);
+        const newTransaction: InvestmentTransaction = { ...transaction, id: new Date().toISOString() };
         
-        const newValue = newTotalQuantity * transaction.price;
+        if (!transaction.unit) {
+            delete (newTransaction as Partial<InvestmentTransaction>).unit;
+        }
+        
+        const updatedHistory = [...(investment.history || []), newTransaction];
 
         await updateDoc(investmentDocRef, { 
             history: updatedHistory,
-            value: newValue
         });
     }
 }
@@ -68,17 +66,16 @@ export const updateInvestmentTransaction = async (investmentId: string, index: n
     if (investmentSnap.exists()) {
         const investment = investmentSnap.data() as Investment;
         const updatedHistory = [...(investment.history || [])];
-        updatedHistory[index] = { ...transaction, id: updatedHistory[index].id };
+        const newTransactionData: InvestmentTransaction = { ...transaction, id: updatedHistory[index].id };
 
-        const newTotalQuantity = updatedHistory.reduce((acc, item) => {
-            return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
-        }, 0);
+        if (!transaction.unit) {
+            delete (newTransactionData as Partial<InvestmentTransaction>).unit;
+        }
 
-        const newValue = newTotalQuantity * transaction.price;
+        updatedHistory[index] = newTransactionData;
         
         await updateDoc(investmentDocRef, { 
-            history: updatedHistory,
-            value: newValue
+            history: updatedHistory
         });
     }
 }
@@ -92,20 +89,8 @@ export const deleteInvestmentTransaction = async (investmentId: string, index: n
         const updatedHistory = [...(investment.history || [])];
         updatedHistory.splice(index, 1);
 
-        const newTotalQuantity = updatedHistory.reduce((acc, item) => {
-            return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
-        }, 0);
-
-        let newValue = 0;
-        if (updatedHistory.length > 0) {
-            // Sort by date to find the most recent transaction to use for pricing
-            const sortedHistory = [...updatedHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            newValue = newTotalQuantity * sortedHistory[0].price;
-        }
-
         await updateDoc(investmentDocRef, { 
-            history: updatedHistory,
-            value: newValue
+            history: updatedHistory
         });
     }
 }

@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import { useMemo } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -52,19 +53,18 @@ export function InvestmentHistorySheet({
     return null;
   }
 
-  const formatAmount = (amount: number, currency: Currency) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-    }).format(amount);
-  };
-
-  const renderTotalHoldings = (investment: Investment) => {
+  const { quantityString, netInvestment } = useMemo(() => {
+    if (!investment.history || investment.history.length === 0) {
+      return { quantityString: "0", netInvestment: 0 };
+    }
     const { category, history } = investment;
     
-    if (!history || history.length === 0) {
-        return "No holdings yet."
-    }
+    const calculatedNetInvestment = history.reduce((acc, t) => {
+        const value = t.quantity * t.price;
+        return t.type === 'buy' ? acc + value : acc - value;
+    }, 0);
+
+    let calculatedQuantityString = "0";
 
     if (category === 'Gold') {
         const holdings: { [key: string]: number } = {};
@@ -74,27 +74,36 @@ export function InvestmentHistorySheet({
         });
 
         const formattedHoldings = Object.entries(holdings)
-            .filter(([, qty]) => qty > 0.0001) // Avoid floating point dust
+            .filter(([, qty]) => qty > 0.0001)
             .map(([unit, qty]) => `${qty.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unit}`)
             .join(', ');
         
-        return `Total Holdings: ${formattedHoldings.length > 0 ? formattedHoldings : '0'}`;
-    }
+        calculatedQuantityString = formattedHoldings.length > 0 ? formattedHoldings : '0';
 
-    if (category === 'Real Estate') {
+    } else if (category === 'Real Estate') {
         const totalProperties = history.reduce((acc, item) => acc + (item.type === 'buy' ? 1 : -1), 0);
-        return `Total Holdings: ${totalProperties} propert${totalProperties === 1 ? 'y' : 'ies'}`;
+        calculatedQuantityString = `${totalProperties} propert${totalProperties === 1 ? 'y' : 'ies'}`;
+    } else {
+        const totalQuantity = history.reduce((acc, item) => {
+            return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
+        }, 0);
+        
+        const quantityFormatting: Intl.NumberFormatOptions = (category === "Mutual Funds")
+            ? { minimumFractionDigits: 2, maximumFractionDigits: 4 }
+            : { minimumFractionDigits: 0, maximumFractionDigits: 2 }
+
+        calculatedQuantityString = totalQuantity.toLocaleString(undefined, quantityFormatting);
     }
-
-    const totalQuantity = history.reduce((acc, item) => {
-        return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
-    }, 0);
     
-    const quantityFormatting: Intl.NumberFormatOptions = (category === "Mutual Funds")
-        ? { minimumFractionDigits: 2, maximumFractionDigits: 4 }
-        : { minimumFractionDigits: 0, maximumFractionDigits: 2 }
+    return { quantityString: calculatedQuantityString, netInvestment: calculatedNetInvestment };
 
-    return `Total Quantity: ${totalQuantity.toLocaleString(undefined, quantityFormatting)}`;
+  }, [investment]);
+
+  const formatAmount = (amount: number, currency: Currency) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
   };
 
   return (
@@ -115,9 +124,16 @@ export function InvestmentHistorySheet({
           </div>
         </SheetHeader>
         <div className="py-4">
-          <div className="mb-4">
-            <h3 className="font-semibold">Current Holdings</h3>
-            <p className="text-sm text-muted-foreground">{renderTotalHoldings(investment)}</p>
+          <div className="mb-4 rounded-lg border p-4 space-y-2">
+            <h3 className="font-semibold">Holdings Summary</h3>
+            <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1">
+              <span>Total Quantity:</span>
+              <span className="font-medium text-right text-foreground">{quantityString}</span>
+              <span>Net Investment:</span>
+              <span className="font-medium text-right text-foreground">{formatAmount(netInvestment, investment.currency)}</span>
+              <span>Current Value:</span>
+              <span className="font-medium text-right text-foreground">{formatAmount(investment.value, investment.currency)}</span>
+            </div>
           </div>
           <Table>
             <TableHeader>

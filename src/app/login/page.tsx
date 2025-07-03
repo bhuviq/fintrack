@@ -53,7 +53,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen items-start justify-center bg-background p-4 pt-20 sm:pt-32">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -77,7 +77,7 @@ export default function LoginPage() {
             </TabsList>
             <TabsContent value="login">
               <form onSubmit={handleSendOtp}>
-                <CardContent className="flex flex-col justify-center min-h-44 space-y-4 pt-6">
+                <CardContent className="space-y-4 pt-6">
                   <div className="space-y-2">
                     <Label htmlFor="loginIdentifier">Email or Phone Number</Label>
                     <Input
@@ -103,7 +103,7 @@ export default function LoginPage() {
             </TabsContent>
             <TabsContent value="signup">
               <form onSubmit={handleSendOtp}>
-                <CardContent className="min-h-44 space-y-4 pt-6">
+                <CardContent className="space-y-4 pt-6">
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
                     <Input

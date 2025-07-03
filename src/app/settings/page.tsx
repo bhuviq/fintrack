@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Mail, Smartphone, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { getUserProfile, updateUserProfile } from '@/services/userService';
 import type { UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -212,34 +212,6 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="flex items-start gap-4">
-              <Smartphone className="h-6 w-6 text-muted-foreground mt-1" />
-              <div>
-                <Label htmlFor="sms-auth" className="font-medium leading-none">
-                  SMS / Text Message
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Receive a verification code via text message.
-                </p>
-              </div>
-            </div>
-            <Switch id="sms-auth" />
-          </div>
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="flex items-start gap-4">
-              <Mail className="h-6 w-6 text-muted-foreground mt-1" />
-              <div>
-                <Label htmlFor="email-auth" className="font-medium leading-none">
-                  Email
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Receive a verification code via email.
-                </p>
-              </div>
-            </div>
-            <Switch id="email-auth" />
-          </div>
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="flex items-start gap-4">
               <ShieldCheck className="h-6 w-6 text-muted-foreground mt-1" />

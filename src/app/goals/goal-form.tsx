@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -23,13 +24,22 @@ import {
   SheetFooter,
   SheetClose,
 } from '@/components/ui/sheet';
-import type { Goal } from '@/lib/types';
+import type { Goal, Currency } from '@/lib/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useCurrency } from '@/context/currency-provider';
 
 
 const goalSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(3, { message: 'Goal name must be at least 3 characters.' }),
   target: z.coerce.number().positive({ message: 'Target must be a positive number.' }),
+  currency: z.enum(['USD', 'GBP', 'INR']),
 });
 
 export type GoalFormValues = z.infer<typeof goalSchema>;
@@ -42,11 +52,13 @@ interface GoalFormProps {
 }
 
 export function GoalForm({ isOpen, onOpenChange, goal, onSubmit }: GoalFormProps) {
+  const { currency: globalCurrency } = useCurrency();
   const form = useForm<GoalFormValues>({
     resolver: zodResolver(goalSchema),
     defaultValues: {
       name: '',
       target: undefined,
+      currency: globalCurrency,
     },
   });
 
@@ -57,15 +69,17 @@ export function GoalForm({ isOpen, onOpenChange, goal, onSubmit }: GoalFormProps
           id: goal.id,
           name: goal.name,
           target: goal.target,
+          currency: goal.currency,
         });
       } else {
         form.reset({
           name: '',
           target: undefined,
+          currency: globalCurrency,
         });
       }
     }
-  }, [goal, form, isOpen]);
+  }, [goal, form, isOpen, globalCurrency]);
 
   const handleSubmit = (values: GoalFormValues) => {
     onSubmit({ ...values, id: goal?.id });
@@ -96,19 +110,43 @@ export function GoalForm({ isOpen, onOpenChange, goal, onSubmit }: GoalFormProps
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="target"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Target Amount</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="e.g. 20000" {...field} value={field.value ?? ''} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+             <div className="grid grid-cols-2 gap-4">
+               <FormField
+                control={form.control}
+                name="target"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target Amount</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="e.g. 20000" {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Currency</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a currency" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="USD">USD ($)</SelectItem>
+                            <SelectItem value="GBP">GBP (£)</SelectItem>
+                            <SelectItem value="INR">INR (₹)</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
             <SheetFooter>
               <SheetClose asChild>
                 <Button type="button" variant="outline">

@@ -19,13 +19,12 @@ import { GoalForm, type GoalFormValues } from './goal-form';
 import { GoalContributionForm, type ContributionFormValues } from './goal-contribution-form';
 import { GoalHistorySheet } from './goal-history-sheet';
 import { getGoals, addGoal, updateGoal, deleteGoal, addContribution, deleteContribution } from '@/services/goalService';
-import type { Goal, NewGoal } from '@/lib/types';
+import type { Goal, NewGoal, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useCurrency } from '@/context/currency-provider';
 
 
 export default function GoalsPage() {
@@ -33,7 +32,6 @@ export default function GoalsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
   const { toast } = useToast();
-  const { formatCurrency } = useCurrency();
 
   const [isGoalFormOpen, setIsGoalFormOpen] = React.useState(false);
   const [isContributionFormOpen, setIsContributionFormOpen] = React.useState(false);
@@ -125,7 +123,7 @@ export default function GoalsPage() {
     try {
         const { id, ...goalData } = data;
         if (selectedGoal && id) {
-            await updateGoal(id, { name: goalData.name, target: goalData.target });
+            await updateGoal(id, { name: goalData.name, target: goalData.target, currency: goalData.currency });
         } else {
             await addGoal(goalData as NewGoal);
         }
@@ -179,6 +177,15 @@ export default function GoalsPage() {
     setContributionToDelete(null);
   };
   
+  const formatGoalCurrency = (amount: number, currency: Currency) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   if (isLoading) {
     return (
         <div className="space-y-6">
@@ -212,6 +219,7 @@ export default function GoalsPage() {
         {goals.map((goal) => {
           const currentAmount = goal.current || 0;
           const percentage = goal.target > 0 ? (currentAmount / goal.target) * 100 : 0;
+          const goalCurrency = goal.currency || 'USD';
 
           return (
             <Card key={goal.id} className="flex flex-col relative">
@@ -246,10 +254,10 @@ export default function GoalsPage() {
               <CardContent className="flex-1 p-6">
                 <CardTitle className="mb-2 pr-10">{goal.name}</CardTitle>
                 <p className="text-2xl font-bold text-primary">
-                  {formatCurrency(currentAmount)}
+                  {formatGoalCurrency(currentAmount, goalCurrency)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  saved of {formatCurrency(goal.target)}
+                  saved of {formatGoalCurrency(goal.target, goalCurrency)}
                 </p>
               </CardContent>
               <CardFooter className="p-6 pt-0">

@@ -1,3 +1,6 @@
+
+export type Currency = 'USD' | 'GBP' | 'INR';
+
 export interface Account {
   id: string; // Firestore document ID
   userId: string;
@@ -54,6 +57,7 @@ export interface Goal {
     userId: string;
     name: string;
     target: number;
+    currency: Currency;
     current: number;
     history: GoalContribution[];
 }
@@ -92,5 +96,5 @@ export interface UserProfile {
     avatarUrl?: string;
     twoFactorEnabled?: boolean;
     twoFactorSecret?: string;
-    currency?: 'USD' | 'GBP' | 'INR';
+    currency?: Currency;
 }

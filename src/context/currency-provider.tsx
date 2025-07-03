@@ -5,8 +5,7 @@ import * as React from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { getUserProfile } from '@/services/userService';
-
-export type Currency = 'USD' | 'GBP' | 'INR';
+import type { Currency } from '@/lib/types';
 
 interface CurrencyContextType {
   currency: Currency;

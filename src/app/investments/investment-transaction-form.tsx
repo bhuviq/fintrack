@@ -33,6 +33,7 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import type { MOCK_DATA } from '@/lib/data';
 
 const investmentTransactionSchema = z.object({
   type: z.enum(['buy', 'sell']),
@@ -42,12 +43,15 @@ const investmentTransactionSchema = z.object({
 });
 
 export type InvestmentTransactionFormValues = z.infer<typeof investmentTransactionSchema>;
+type InvestmentHistoryItem = (typeof MOCK_DATA.investments)[0]['history'][0];
 
 interface InvestmentTransactionFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSubmit: (data: InvestmentTransactionFormValues) => void;
+  onSubmit: (data: InvestmentTransactionFormValues, index?: number) => void;
   investmentCategory?: string;
+  transaction?: InvestmentHistoryItem;
+  transactionIndex?: number;
 }
 
 export function InvestmentTransactionForm({
@@ -55,6 +59,8 @@ export function InvestmentTransactionForm({
   onOpenChange,
   onSubmit,
   investmentCategory,
+  transaction,
+  transactionIndex,
 }: InvestmentTransactionFormProps) {
   const form = useForm<InvestmentTransactionFormValues>({
     resolver: zodResolver(investmentTransactionSchema),
@@ -67,18 +73,33 @@ export function InvestmentTransactionForm({
   });
 
   React.useEffect(() => {
-    if (isOpen) {
-      form.reset({
-        type: 'buy',
-        date: new Date(),
-        quantity: undefined,
-        price: undefined,
-      });
+    if (investmentCategory === 'Real Estate') {
+      form.setValue('quantity', 1);
     }
-  }, [form, isOpen]);
+  }, [investmentCategory, form]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (transaction) {
+        form.reset({
+          type: transaction.type,
+          date: new Date(transaction.date),
+          quantity: transaction.quantity,
+          price: transaction.price,
+        });
+      } else {
+        form.reset({
+          type: 'buy',
+          date: new Date(),
+          quantity: investmentCategory === 'Real Estate' ? 1 : undefined,
+          price: undefined,
+        });
+      }
+    }
+  }, [form, isOpen, transaction, investmentCategory]);
 
   const handleSubmit = (values: InvestmentTransactionFormValues) => {
-    onSubmit(values);
+    onSubmit(values, transactionIndex);
     onOpenChange(false);
   };
 
@@ -86,9 +107,11 @@ export function InvestmentTransactionForm({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Add Transaction</SheetTitle>
+          <SheetTitle>{transaction ? 'Edit Transaction' : 'Add Transaction'}</SheetTitle>
           <SheetDescription>
-            Record a new buy or sell transaction for this investment.
+            {transaction
+              ? 'Update the details of this transaction.'
+              : 'Record a new buy or sell transaction for this investment.'}
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
@@ -167,28 +190,30 @@ export function InvestmentTransactionForm({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="quantity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    {investmentCategory === 'Gold' ? 'Weight (oz)' : 'Quantity'}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder={
-                        investmentCategory === 'Gold' ? 'e.g. 1.5' : 'e.g. 10'
-                      }
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {investmentCategory !== 'Real Estate' && (
+              <FormField
+                control={form.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {investmentCategory === 'Gold' ? 'Weight (oz)' : 'Quantity'}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder={
+                          investmentCategory === 'Gold' ? 'e.g. 1.5' : 'e.g. 10'
+                        }
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="price"

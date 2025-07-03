@@ -19,15 +19,25 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { MOCK_DATA } from '@/lib/data';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type Investment = (typeof MOCK_DATA.investments)[0];
+type InvestmentHistoryItem = Investment['history'][0];
 
 interface InvestmentHistorySheetProps {
   investment: Investment | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onAddTransaction: () => void;
+  onEditTransaction: (transaction: InvestmentHistoryItem, index: number) => void;
+  onDeleteTransaction: (index: number) => void;
 }
 
 export function InvestmentHistorySheet({
@@ -35,6 +45,8 @@ export function InvestmentHistorySheet({
   isOpen,
   onOpenChange,
   onAddTransaction,
+  onEditTransaction,
+  onDeleteTransaction,
 }: InvestmentHistorySheetProps) {
   if (!investment) {
     return null;
@@ -74,6 +86,7 @@ export function InvestmentHistorySheet({
                 <TableHead className="text-right">Quantity</TableHead>
                 <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-right">Total Value</TableHead>
+                <TableHead><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -88,6 +101,26 @@ export function InvestmentHistorySheet({
                   <TableCell className="text-right font-medium">{item.quantity.toLocaleString()}</TableCell>
                   <TableCell className="text-right font-medium">${item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell className="text-right font-medium">${(item.quantity * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell>
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                              <DropdownMenuItem onClick={() => onEditTransaction(item, index)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive" onClick={() => onDeleteTransaction(index)}>
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
+                      </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

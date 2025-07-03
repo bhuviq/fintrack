@@ -31,6 +31,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 
 type Investment = (typeof MOCK_DATA.investments)[0];
+type InvestmentHistoryItem = Investment['history'][0];
 
 export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<Investment[]>(MOCK_DATA.investments);
@@ -41,6 +42,9 @@ export default function InvestmentsPage() {
   const [activeTab, setActiveTab] = useState('All');
   const [historyInvestment, setHistoryInvestment] = useState<Investment | null>(null);
   const [isTransactionSheetOpen, setIsTransactionSheetOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<{ transaction: InvestmentHistoryItem; index: number } | null>(null);
+  const [deleteTransactionAlertOpen, setDeleteTransactionAlertOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
 
   const investmentCategories = useMemo(
     () => MOCK_DATA.categories.filter((c) => c.type === 'investment'),
@@ -82,7 +86,18 @@ export default function InvestmentsPage() {
   };
 
   const handleAddTransaction = () => {
+    setEditingTransaction(null);
     setIsTransactionSheetOpen(true);
+  };
+
+  const handleEditTransactionHistory = (transaction: InvestmentHistoryItem, index: number) => {
+    setEditingTransaction({ transaction, index });
+    setIsTransactionSheetOpen(true);
+  };
+
+  const handleDeleteTransactionHistory = (index: number) => {
+    setTransactionToDelete(index);
+    setDeleteTransactionAlertOpen(true);
   };
 
   const confirmDelete = () => {
@@ -92,6 +107,26 @@ export default function InvestmentsPage() {
     setDeleteAlertOpen(false);
     setInvestmentToDelete(null);
   }
+
+  const confirmDeleteTransaction = () => {
+    if (transactionToDelete === null || !historyInvestment) return;
+
+    const updatedInvestments = investments.map(inv => {
+        if (inv.id === historyInvestment.id) {
+            const updatedHistory = inv.history.filter((_, i) => i !== transactionToDelete);
+            return { ...inv, history: updatedHistory };
+        }
+        return inv;
+    });
+    setInvestments(updatedInvestments);
+
+    const newlyUpdatedInvestment = updatedInvestments.find(inv => inv.id === historyInvestment.id);
+    setHistoryInvestment(newlyUpdatedInvestment || null);
+
+    setDeleteTransactionAlertOpen(false);
+    setTransactionToDelete(null);
+  };
+
 
   const handleSaveInvestment = (data: InvestmentFormValues) => {
     if (editingInvestment && data.id) {
@@ -139,22 +174,27 @@ export default function InvestmentsPage() {
     setEditingInvestment(null);
   };
   
-  const handleSaveInvestmentTransaction = (data: InvestmentTransactionFormValues) => {
+  const handleSaveInvestmentTransaction = (data: InvestmentTransactionFormValues, index?: number) => {
     if (!historyInvestment) return;
 
-    const newTransaction = {
-      date: format(data.date, 'yyyy-MM-dd'),
-      type: data.type,
-      quantity: Number(data.quantity),
-      price: Number(data.price),
+    const newTransactionData = {
+        date: format(data.date, 'yyyy-MM-dd'),
+        type: data.type,
+        quantity: Number(data.quantity),
+        price: Number(data.price),
     };
 
     const updatedInvestments = investments.map(inv => {
         if (inv.id === historyInvestment.id) {
-            return {
-                ...inv,
-                history: [...inv.history, newTransaction],
-            };
+            const newHistory = [...inv.history];
+            if (index !== undefined) {
+                // Edit
+                newHistory[index] = newTransactionData;
+            } else {
+                // Add
+                newHistory.push(newTransactionData);
+            }
+            return { ...inv, history: newHistory };
         }
         return inv;
     });
@@ -164,6 +204,7 @@ export default function InvestmentsPage() {
     setHistoryInvestment(newlyUpdatedInvestment || null);
 
     setIsTransactionSheetOpen(false);
+    setEditingTransaction(null);
   };
 
   const formatQuantity = (quantity: number, category: string) => {
@@ -311,12 +352,16 @@ export default function InvestmentsPage() {
         isOpen={!!historyInvestment}
         onOpenChange={(isOpen) => !isOpen && setHistoryInvestment(null)}
         onAddTransaction={handleAddTransaction}
+        onEditTransaction={handleEditTransactionHistory}
+        onDeleteTransaction={handleDeleteTransactionHistory}
       />
        <InvestmentTransactionForm 
         isOpen={isTransactionSheetOpen}
         onOpenChange={setIsTransactionSheetOpen}
         onSubmit={handleSaveInvestmentTransaction}
         investmentCategory={historyInvestment?.category}
+        transaction={editingTransaction?.transaction}
+        transactionIndex={editingTransaction?.index}
        />
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>
@@ -329,6 +374,20 @@ export default function InvestmentsPage() {
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+       <AlertDialog open={deleteTransactionAlertOpen} onOpenChange={setDeleteTransactionAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete this transaction record.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDeleteTransaction}>Delete</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

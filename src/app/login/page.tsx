@@ -66,16 +66,19 @@ export default function LoginPage() {
       setIsLoading(false);
       return;
     }
-    // Redirect if user is already logged in
+    // This listener handles redirecting users who are already authenticated
+    // when they land on the login page. It will not interfere with the
+    // new user sign-up flow.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+      if (user && !isSigningIn) {
         router.push('/');
       } else {
         setIsLoading(false);
       }
     });
+
     return () => unsubscribe();
-  }, [router, isFirebaseConfigured]);
+  }, [router, isFirebaseConfigured, isSigningIn]);
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);

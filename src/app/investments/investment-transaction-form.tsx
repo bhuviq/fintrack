@@ -34,16 +34,32 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { MOCK_DATA } from '@/lib/data';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const investmentTransactionSchema = z.object({
   type: z.enum(['buy', 'sell']),
   date: z.date(),
-  quantity: z.coerce.number().positive({ message: 'Quantity must be a positive number.' }),
-  price: z.coerce.number().positive({ message: 'Price must be a positive number.' }),
+  quantity: z.coerce
+    .number()
+    .positive({ message: 'Quantity must be a positive number.' }),
+  price: z.coerce
+    .number()
+    .positive({ message: 'Price must be a positive number.' }),
+  unit: z.enum(['oz', 'gm']).optional(),
 });
 
-export type InvestmentTransactionFormValues = z.infer<typeof investmentTransactionSchema>;
-type InvestmentHistoryItem = (typeof MOCK_DATA.investments)[0]['history'][0];
+export type InvestmentTransactionFormValues = z.infer<
+  typeof investmentTransactionSchema
+>;
+type InvestmentHistoryItem = (typeof MOCK_DATA.investments)[0]['history'][0] & {
+  unit?: 'oz' | 'gm';
+};
 
 interface InvestmentTransactionFormProps {
   isOpen: boolean;
@@ -69,6 +85,7 @@ export function InvestmentTransactionForm({
       date: new Date(),
       quantity: undefined,
       price: undefined,
+      unit: undefined,
     },
   });
 
@@ -86,6 +103,9 @@ export function InvestmentTransactionForm({
           date: new Date(transaction.date),
           quantity: transaction.quantity,
           price: transaction.price,
+          unit:
+            transaction.unit ||
+            (investmentCategory === 'Gold' ? 'oz' : undefined),
         });
       } else {
         form.reset({
@@ -93,6 +113,7 @@ export function InvestmentTransactionForm({
           date: new Date(),
           quantity: investmentCategory === 'Real Estate' ? 1 : undefined,
           price: undefined,
+          unit: investmentCategory === 'Gold' ? 'oz' : undefined,
         });
       }
     }
@@ -107,7 +128,9 @@ export function InvestmentTransactionForm({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{transaction ? 'Edit Transaction' : 'Add Transaction'}</SheetTitle>
+          <SheetTitle>
+            {transaction ? 'Edit Transaction' : 'Add Transaction'}
+          </SheetTitle>
           <SheetDescription>
             {transaction
               ? 'Update the details of this transaction.'
@@ -190,21 +213,63 @@ export function InvestmentTransactionForm({
                 </FormItem>
               )}
             />
-            {investmentCategory !== 'Real Estate' && (
+            {investmentCategory === 'Gold' ? (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Weight</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 1.5"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="unit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        defaultValue="oz"
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="oz">oz</SelectItem>
+                          <SelectItem value="gm">gm</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : investmentCategory !== 'Real Estate' ? (
               <FormField
                 control={form.control}
                 name="quantity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      {investmentCategory === 'Gold' ? 'Weight (oz)' : 'Quantity'}
-                    </FormLabel>
+                    <FormLabel>Quantity</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder={
-                          investmentCategory === 'Gold' ? 'e.g. 1.5' : 'e.g. 10'
-                        }
+                        placeholder="e.g. 10"
                         {...field}
                         value={field.value ?? ''}
                       />
@@ -213,7 +278,7 @@ export function InvestmentTransactionForm({
                   </FormItem>
                 )}
               />
-            )}
+            ) : null}
             <FormField
               control={form.control}
               name="price"

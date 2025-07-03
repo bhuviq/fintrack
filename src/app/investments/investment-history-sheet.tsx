@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 type Investment = (typeof MOCK_DATA.investments)[0];
-type InvestmentHistoryItem = Investment['history'][0];
+type InvestmentHistoryItem = Investment['history'][0] & { unit?: 'oz' | 'gm' };
 
 interface InvestmentHistorySheetProps {
   investment: Investment | null;
@@ -52,9 +52,30 @@ export function InvestmentHistorySheet({
     return null;
   }
 
-  const totalQuantity = investment.history.reduce((acc, item) => {
-    return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
-  }, 0);
+  const renderTotalHoldings = (investment: Investment) => {
+    const { category, history } = investment;
+
+    if (category === 'Gold') {
+        const holdings: { [key: string]: number } = {};
+        (history as InvestmentHistoryItem[]).forEach(t => {
+            const unit = t.unit || 'oz';
+            holdings[unit] = (holdings[unit] || 0) + (t.type === 'buy' ? t.quantity : -t.quantity);
+        });
+
+        const formattedHoldings = Object.entries(holdings)
+            .filter(([, qty]) => qty > 0.0001) // Avoid floating point dust
+            .map(([unit, qty]) => `${qty.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unit}`)
+            .join(', ');
+        
+        return `Total Holdings: ${formattedHoldings.length > 0 ? formattedHoldings : '0'}`;
+    }
+
+    const totalQuantity = history.reduce((acc, item) => {
+        return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
+    }, 0);
+
+    return `Total Quantity: ${totalQuantity.toLocaleString()}`;
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -76,7 +97,7 @@ export function InvestmentHistorySheet({
         <div className="py-4">
           <div className="mb-4">
             <h3 className="font-semibold">Current Holdings</h3>
-            <p className="text-sm text-muted-foreground">Total Quantity: {totalQuantity.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">{renderTotalHoldings(investment)}</p>
           </div>
           <Table>
             <TableHeader>
@@ -98,7 +119,10 @@ export function InvestmentHistorySheet({
                       {item.type}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right font-medium">{item.quantity.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {item.quantity.toLocaleString()}
+                    {(item as InvestmentHistoryItem).unit ? ` ${(item as InvestmentHistoryItem).unit}` : ''}
+                  </TableCell>
                   <TableCell className="text-right font-medium">${item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell className="text-right font-medium">${(item.quantity * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell>
@@ -109,7 +133,7 @@ export function InvestmentHistorySheet({
                               </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                              <DropdownMenuItem onClick={() => onEditTransaction(item, index)}>
+                              <DropdownMenuItem onClick={() => onEditTransaction(item as InvestmentHistoryItem, index)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit
                               </DropdownMenuItem>

@@ -31,7 +31,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 
 type Investment = (typeof MOCK_DATA.investments)[0];
-type InvestmentHistoryItem = Investment['history'][0];
+type InvestmentHistoryItem = Investment['history'][0] & { unit?: 'oz' | 'gm' };
 
 export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<Investment[]>(MOCK_DATA.investments);
@@ -177,11 +177,12 @@ export default function InvestmentsPage() {
   const handleSaveInvestmentTransaction = (data: InvestmentTransactionFormValues, index?: number) => {
     if (!historyInvestment) return;
 
-    const newTransactionData = {
+    const newTransactionData: InvestmentHistoryItem = {
         date: format(data.date, 'yyyy-MM-dd'),
         type: data.type,
         quantity: Number(data.quantity),
         price: Number(data.price),
+        unit: data.unit,
     };
 
     const updatedInvestments = investments.map(inv => {
@@ -194,7 +195,7 @@ export default function InvestmentsPage() {
                 // Add
                 newHistory.push(newTransactionData);
             }
-            return { ...inv, history: newHistory };
+            return { ...inv, history: newHistory as any[] };
         }
         return inv;
     });
@@ -207,22 +208,39 @@ export default function InvestmentsPage() {
     setEditingTransaction(null);
   };
 
-  const formatQuantity = (quantity: number, category: string) => {
+  const formatQuantity = (investment: Investment) => {
+    const { category, history } = investment;
+
     if (category === 'Real Estate') {
       return 'N/A';
     }
-    if (category === 'Mutual Funds') {
-      return quantity.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 4,
-      });
-    }
+
     if (category === 'Gold') {
-      return `${quantity.toLocaleString(undefined, {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 3,
-      })} oz`;
+        const holdings: { [key: string]: number } = {};
+        (history as InvestmentHistoryItem[]).forEach(t => {
+            const unit = t.unit || 'oz'; // Default to oz for backward compatibility
+            const currentQty = holdings[unit] || 0;
+            holdings[unit] = currentQty + (t.type === 'buy' ? t.quantity : -t.quantity);
+        });
+
+        const formattedHoldings = Object.entries(holdings)
+            .filter(([, qty]) => qty > 0.0001) // Avoid floating point dust
+            .map(([unit, qty]) => `${qty.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unit}`);
+
+        return formattedHoldings.length > 0 ? formattedHoldings.join(', ') : '0';
     }
+
+    const quantity = history.reduce((acc, item) => {
+        return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
+    }, 0);
+
+    if (category === 'Mutual Funds') {
+        return quantity.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 4,
+        });
+    }
+    
     return quantity.toLocaleString();
   };
 
@@ -290,19 +308,14 @@ export default function InvestmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInvestments.map((investment) => {
-                const quantity = investment.history.reduce((acc, item) => {
-                    return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
-                }, 0);
-
-                return (
+              {filteredInvestments.map((investment) => (
                 <TableRow key={investment.id}>
                   <TableCell className="font-medium">{investment.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{investment.category}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>
-                  <TableCell className="text-right font-medium">{formatQuantity(quantity, investment.category)}</TableCell>
+                  <TableCell className="text-right font-medium">{formatQuantity(investment)}</TableCell>
                   <TableCell className="text-right font-medium">${investment.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     <div className="flex items-center justify-end">
@@ -335,7 +348,7 @@ export default function InvestmentsPage() {
                       </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              )})}
+              ))}
             </TableBody>
           </Table>
         </CardContent>

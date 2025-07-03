@@ -147,7 +147,7 @@ export const MOCK_DATA = {
     { id: 3, name: 'Vanguard S&P 500 ETF', symbol: 'VOO', value: 32110.30, change: 0.8, changeAmount: 254.84, category: 'Mutual Funds', history: [{ date: '2022-11-01', type: 'buy', quantity: 70, price: 350.00 }] },
     { id: 4, name: 'Downtown Apartment', symbol: '', value: 250000, change: 0, changeAmount: 0, category: 'Real Estate', history: [{ date: '2021-08-01', type: 'buy', quantity: 1, price: 220000.00 }] },
     { id: 5, name: 'US Treasury Bond', symbol: 'US10Y', value: 10000, change: 0.1, changeAmount: 10, category: 'Bonds', history: [{ date: '2024-01-01', type: 'buy', quantity: 10, price: 990.00 }] },
-    { id: 6, name: '1oz Gold Bar', symbol: 'XAU', value: 2350.00, change: 0.7, changeAmount: 16.45, category: 'Gold', history: [{ date: '2023-09-09', type: 'buy', quantity: 1, price: 1980.50 }] },
+    { id: 6, name: '1oz Gold Bar', symbol: 'XAU', value: 2350.00, change: 0.7, changeAmount: 16.45, category: 'Gold', history: [{ date: '2023-09-09', type: 'buy', quantity: 1, price: 1980.50, unit: 'oz' }] },
   ],
   budgets: [
     { id: 1, category: 'Groceries', spent: 450, total: 800 },

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { MOCK_DATA } from '@/lib/data';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -32,6 +32,8 @@ import { BudgetForm, type BudgetFormValues } from './budget-form';
 
 type Budget = (typeof MOCK_DATA.budgets)[0];
 
+const ITEMS_PER_PAGE = 6;
+
 export default function BudgetsPage() {
   const { allTransactions } = MOCK_DATA;
   const [budgets, setBudgets] = React.useState<Budget[]>(MOCK_DATA.budgets);
@@ -44,6 +46,7 @@ export default function BudgetsPage() {
   const [editingBudget, setEditingBudget] = React.useState<Budget | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
   const [budgetToDelete, setBudgetToDelete] = React.useState<Budget | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   const handleAddBudget = () => {
     setEditingBudget(null);
@@ -143,6 +146,12 @@ export default function BudgetsPage() {
     });
   }, [date, budgets, allTransactions]);
 
+  const totalPages = Math.ceil(calculatedBudgets.length / ITEMS_PER_PAGE);
+  const paginatedBudgets = calculatedBudgets.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <>
       <Card>
@@ -202,7 +211,7 @@ export default function BudgetsPage() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {calculatedBudgets.map((budget) => {
+          {paginatedBudgets.map((budget) => {
             const percentage = budget.total > 0 ? (budget.spent / budget.total) * 100 : 0;
             const remaining = budget.total - budget.spent;
 
@@ -245,6 +254,31 @@ export default function BudgetsPage() {
             );
           })}
         </CardContent>
+        {totalPages > 1 && (
+            <CardFooter className="flex items-center justify-between p-4 border-t">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </CardFooter>
+          )}
       </Card>
        <BudgetForm
         isOpen={isSheetOpen}

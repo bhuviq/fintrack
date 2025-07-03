@@ -23,15 +23,21 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowUp, ArrowDown, MoreHorizontal, PlusCircle, Edit, Trash2, History } from 'lucide-react';
+import { ArrowUp, ArrowDown, MoreHorizontal, PlusCircle, Edit, Trash2, History, Calendar as CalendarIcon } from 'lucide-react';
 import { InvestmentForm, type InvestmentFormValues } from './investment-form';
 import { InvestmentHistorySheet } from './investment-history-sheet';
 import { InvestmentTransactionForm, type InvestmentTransactionFormValues } from './investment-transaction-form';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
+import { type DateRange } from 'react-day-picker';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 type Investment = (typeof MOCK_DATA.investments)[0];
 type InvestmentHistoryItem = Investment['history'][0] & { unit?: 'oz' | 'gm' };
+
+const ITEMS_PER_PAGE = 10;
 
 export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<Investment[]>(MOCK_DATA.investments);
@@ -46,6 +52,9 @@ export default function InvestmentsPage() {
   const [deleteTransactionAlertOpen, setDeleteTransactionAlertOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
 
+  const [date, setDate] = useState<DateRange | undefined>();
+  const [currentPage, setCurrentPage] = useState(1);
+
   const investmentCategories = useMemo(
     () => MOCK_DATA.categories.filter((c) => c.type === 'investment'),
     []
@@ -57,11 +66,35 @@ export default function InvestmentsPage() {
   );
 
   const filteredInvestments = useMemo(() => {
-    if (activeTab === 'All') {
-      return investments;
+    let items = [...investments];
+    // Filter by category tab
+    if (activeTab !== 'All') {
+      items = items.filter((i) => i.category === activeTab);
     }
-    return investments.filter((i) => i.category === activeTab);
-  }, [investments, activeTab]);
+    // Filter by date range
+    if (date?.from) {
+      const fromDate = new Date(date.from.setHours(0, 0, 0, 0));
+      const toDate = date.to ? new Date(date.to.setHours(23, 59, 59, 999)) : fromDate;
+      items = items.filter(investment => 
+        investment.history.some(transaction => {
+            const transactionDate = new Date(transaction.date);
+            return transactionDate >= fromDate && transactionDate <= toDate;
+        })
+      );
+    }
+    return items;
+  }, [investments, activeTab, date]);
+
+  const totalPages = Math.ceil(filteredInvestments.length / ITEMS_PER_PAGE);
+  const paginatedInvestments = filteredInvestments.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setCurrentPage(1); // Reset page on tab change
+  }
 
   const totalValue = filteredInvestments.reduce((acc, investment) => acc + investment.value, 0);
   const totalChange = filteredInvestments.reduce((acc, investment) => acc + investment.changeAmount, 0);
@@ -257,15 +290,54 @@ export default function InvestmentsPage() {
           </Button>
       </div>
 
-      <Tabs defaultValue="All" onValueChange={setActiveTab} value={activeTab}>
-        <TabsList>
-          {portfolioCategories.map((category) => (
-            <TabsTrigger key={category} value={category}>
-              {category}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <div className="flex flex-wrap items-center gap-2">
+        <Tabs defaultValue="All" onValueChange={handleTabChange} value={activeTab}>
+          <TabsList>
+            {portfolioCategories.map((category) => (
+              <TabsTrigger key={category} value={category}>
+                {category}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              id="date"
+              variant={"outline"}
+              size="sm"
+              className={cn(
+                "w-[240px] justify-start text-left font-normal",
+                !date && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {date?.from ? (
+                date.to ? (
+                  <>
+                    {format(date.from, "LLL dd, y")} -{" "}
+                    {format(date.to, "LLL dd, y")}
+                  </>
+                ) : (
+                  format(date.from, "LLL dd, y")
+                )
+              ) : (
+                <span>Filter by date</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={date?.from}
+              selected={date}
+              onSelect={setDate}
+              numberOfMonths={2}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
 
       <Card>
         <CardHeader>
@@ -308,7 +380,7 @@ export default function InvestmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInvestments.map((investment) => (
+              {paginatedInvestments.map((investment) => (
                 <TableRow key={investment.id}>
                   <TableCell className="font-medium">{investment.name}</TableCell>
                   <TableCell>
@@ -351,6 +423,31 @@ export default function InvestmentsPage() {
               ))}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between p-4 border-t">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
       <InvestmentForm

@@ -9,11 +9,15 @@ import { CategoryForm, type CategoryFormValues } from './category-form';
 import { getCategories, addCategory, updateCategory, deleteCategory } from '@/services/categoryService';
 import type { Category, NewCategory } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 
 export default function CategoriesPage() {
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const router = useRouter();
 
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [editingCategory, setEditingCategory] = React.useState<Category | null>(null);
@@ -33,8 +37,16 @@ export default function CategoriesPage() {
   }, []);
 
   React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchData();
+      } else {
+        router.push('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, fetchData]);
 
   const handleAddCategory = () => {
     setEditingCategory(null);

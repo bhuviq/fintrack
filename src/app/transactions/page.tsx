@@ -49,6 +49,9 @@ import { getAccounts } from '@/services/accountService';
 import { getCategories } from '@/services/categoryService';
 import type { Transaction, Account, Category, NewTransaction } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 
 const ITEMS_PER_PAGE = 10;
@@ -58,6 +61,7 @@ export default function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -85,8 +89,16 @@ export default function TransactionsPage() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchData();
+      } else {
+        router.push('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, fetchData]);
   
   const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc.name])), [accounts]);
 

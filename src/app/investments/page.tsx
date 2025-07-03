@@ -36,6 +36,9 @@ import { getInvestments, addInvestment, updateInvestment, deleteInvestment, addI
 import { getCategories } from '@/services/categoryService';
 import type { Investment, InvestmentTransaction, Category, NewInvestment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -43,6 +46,7 @@ export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
@@ -75,8 +79,16 @@ export default function InvestmentsPage() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchData();
+      } else {
+        router.push('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, fetchData]);
 
 
   const investmentCategories = useMemo(

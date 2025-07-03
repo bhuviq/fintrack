@@ -33,7 +33,9 @@ import { getTransactions } from '@/services/transactionService';
 import { getCategories } from '@/services/categoryService';
 import type { Budget, Transaction, Category, NewBudget } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -42,6 +44,7 @@ export default function BudgetsPage() {
   const [budgets, setBudgets] = React.useState<Budget[]>([]);
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const router = useRouter();
 
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -73,8 +76,16 @@ export default function BudgetsPage() {
   }, []);
 
   React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchData();
+      } else {
+        router.push('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, fetchData]);
 
 
   const handleAddBudget = () => {

@@ -20,11 +20,15 @@ import { GoalHistorySheet } from './goal-history-sheet';
 import { getGoals, addGoal, updateGoal, deleteGoal, addContribution, deleteContribution } from '@/services/goalService';
 import type { Goal, NewGoal } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 
 export default function GoalsPage() {
   const [goals, setGoals] = React.useState<Goal[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const router = useRouter();
 
   const [isGoalFormOpen, setIsGoalFormOpen] = React.useState(false);
   const [isContributionFormOpen, setIsContributionFormOpen] = React.useState(false);
@@ -47,8 +51,16 @@ export default function GoalsPage() {
   }, []);
 
   React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchData();
+      } else {
+        router.push('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, fetchData]);
 
   // This effect ensures that if the 'selectedGoal' is being displayed in a sheet,
   // it always has the most up-to-date data from the main 'goals' list.

@@ -19,34 +19,46 @@ import { getUserProfile, updateUserProfile } from '@/services/userService';
 import type { UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from "@/hooks/use-toast"
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const router = useRouter();
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    const fetchProfile = async () => {
-        setIsLoading(true);
-        try {
-            const userProfile = await getUserProfile();
-            setProfile(userProfile);
-        } catch (error) {
-            console.error("Failed to fetch profile:", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Could not load user profile.",
-            })
-        } finally {
-            setIsLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const fetchProfile = async () => {
+          setIsLoading(true);
+          try {
+              const userProfile = await getUserProfile();
+              setProfile(userProfile);
+          } catch (error) {
+              console.error("Failed to fetch profile:", error);
+              toast({
+                  variant: "destructive",
+                  title: "Error",
+                  description: "Could not load user profile.",
+              })
+          } finally {
+              setIsLoading(false);
+          }
         }
-    }
-    fetchProfile();
-  }, [toast]);
+        fetchProfile();
+      } else {
+        router.push('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, toast]);
   
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {

@@ -29,11 +29,15 @@ import { getAccounts, addAccount, updateAccount, deleteAccount } from '@/service
 import { getTransactions, deleteTransaction } from '@/services/transactionService';
 import type { Account, Transaction, NewAccount } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const router = useRouter();
 
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [editingAccount, setEditingAccount] = React.useState<Account | null>(null);
@@ -57,8 +61,16 @@ export default function AccountsPage() {
   }, []);
 
   React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchData();
+      } else {
+        router.push('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, fetchData]);
 
   const accountsWithCurrentBalance = React.useMemo(() => {
     return accounts.map(account => {

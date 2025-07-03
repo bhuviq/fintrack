@@ -71,6 +71,7 @@ export default function LoginPage() {
     React.useState<ConfirmationResult | null>(null);
   const router = useRouter();
   const { toast } = useToast();
+  const recaptchaContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -89,21 +90,29 @@ export default function LoginPage() {
   }, [router, isFirebaseConfigured]);
 
   React.useEffect(() => {
-    // This is to ensure the reCAPTCHA verifier is only created once and is ready when needed.
-    if (
-      isFirebaseConfigured &&
-      typeof window !== 'undefined' &&
-      !window.recaptchaVerifier
-    ) {
-      window.recaptchaVerifier = new RecaptchaVerifier(
-        auth,
-        'recaptcha-container',
-        {
-          size: 'invisible',
-        }
-      );
+    if (!isFirebaseConfigured || typeof window === 'undefined' || window.recaptchaVerifier) {
+      return;
     }
-  }, [isFirebaseConfigured]);
+    // This is to ensure the reCAPTCHA verifier is only created once and is ready when needed.
+    if (recaptchaContainerRef.current) {
+        try {
+            window.recaptchaVerifier = new RecaptchaVerifier(
+                auth,
+                recaptchaContainerRef.current,
+                {
+                size: 'invisible',
+                }
+            );
+        } catch (error) {
+            console.error("Error initializing RecaptchaVerifier", error);
+            toast({
+                variant: "destructive",
+                title: "reCAPTCHA Error",
+                description: "Failed to initialize reCAPTCHA. Please refresh the page.",
+            });
+        }
+    }
+  }, [isFirebaseConfigured, toast]);
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
@@ -227,7 +236,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-start justify-center bg-background p-4 pt-20 sm:pt-32">
-      <div id="recaptcha-container"></div>
+      <div ref={recaptchaContainerRef} id="recaptcha-container"></div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">

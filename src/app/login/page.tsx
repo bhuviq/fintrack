@@ -9,6 +9,7 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { authenticator } from 'otplib';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +19,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Wallet, AlertTriangle } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -58,6 +61,11 @@ export default function LoginPage() {
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSigningIn, setIsSigningIn] = React.useState(false);
+  const [loginStep, setLoginStep] = React.useState<'initial' | '2fa'>('initial');
+  const [otp, setOtp] = React.useState('');
+  const [isVerifyingOtp, setIsVerifyingOtp] = React.useState(false);
+  const [tempProfile, setTempProfile] = React.useState<UserProfile | null>(null);
+
   const router = useRouter();
   const { toast } = useToast();
 
@@ -66,11 +74,9 @@ export default function LoginPage() {
       setIsLoading(false);
       return;
     }
-    // This listener handles redirecting users who are already authenticated
-    // when they land on the login page. It will not interfere with the
-    // new user sign-up flow.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && !isSigningIn) {
+      // If user is logged in but not in the middle of a 2FA flow, redirect.
+      if (user && !isSigningIn && loginStep === 'initial') {
         router.push('/');
       } else {
         setIsLoading(false);
@@ -78,7 +84,7 @@ export default function LoginPage() {
     });
 
     return () => unsubscribe();
-  }, [router, isFirebaseConfigured, isSigningIn]);
+  }, [router, isFirebaseConfigured, isSigningIn, loginStep]);
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
@@ -87,13 +93,19 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Check if user profile exists
       const userDocRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(userDocRef);
 
       if (docSnap.exists()) {
-        // Existing user, go to dashboard
-        router.push('/');
+        const profile = { id: docSnap.id, ...docSnap.data() } as UserProfile;
+        if (profile.twoFactorEnabled && profile.twoFactorSecret) {
+          // 2FA is enabled, prompt for code
+          setTempProfile(profile);
+          setLoginStep('2fa');
+        } else {
+          // Existing user, no 2FA, go to dashboard
+          router.push('/');
+        }
       } else {
         // New user, create profile and go to welcome page
         const [firstName, ...lastNameParts] =
@@ -112,7 +124,6 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user') {
-        // User closed the sign-in popup. This is not an error we need to show.
         console.log('Sign-in popup closed by user.');
       } else {
         console.error('Google Sign-In Error:', error);
@@ -131,6 +142,41 @@ export default function LoginPage() {
       setIsSigningIn(false);
     }
   };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || !tempProfile?.twoFactorSecret) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
+      });
+      return;
+    }
+    setIsVerifyingOtp(true);
+    try {
+      const isValid = authenticator.verify({ token: otp, secret: tempProfile.twoFactorSecret });
+      if (isValid) {
+        toast({ title: 'Success', description: 'You have been successfully signed in.' });
+        router.push('/');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid Code',
+          description: 'The code is incorrect. Please try again.',
+        });
+      }
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'An unexpected error occurred during verification.',
+      });
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
 
   if (!isFirebaseConfigured) {
     return (
@@ -167,21 +213,56 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Wallet className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Welcome to FinTrack</CardTitle>
+          <CardTitle className="text-2xl">
+            {loginStep === '2fa' ? 'Two-Factor Authentication' : 'Welcome to FinTrack'}
+          </CardTitle>
           <CardDescription>
-            Sign up or log in with Google to manage your finances.
+            {loginStep === '2fa'
+              ? 'Enter the 6-digit code from your authenticator app to continue.'
+              : 'Sign up or log in with Google to manage your finances.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleGoogleSignIn}
-            disabled={isSigningIn}
-          >
-            <GoogleIcon className="mr-2" />
-            Continue with Google
-          </Button>
+          {loginStep === 'initial' && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogleSignIn}
+              disabled={isSigningIn}
+            >
+              <GoogleIcon className="mr-2" />
+              Continue with Google
+            </Button>
+          )}
+
+          {loginStep === '2fa' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="otp-code">Verification Code</Label>
+                <Input
+                  id="otp-code"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="123456"
+                  className="text-center tracking-widest"
+                  maxLength={6}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        handleVerifyOtp();
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                onClick={handleVerifyOtp}
+                disabled={isVerifyingOtp || otp.length !== 6}
+                className="w-full"
+              >
+                {isVerifyingOtp ? 'Verifying...' : 'Verify'}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

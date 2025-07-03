@@ -11,6 +11,7 @@ const pageTitles: { [key: string]: string } = {
   '/budgets': 'Budgets',
   '/goals': 'Goals',
   '/categories': 'Categories',
+  '/settings': 'Settings',
 };
 
 export function Header() {

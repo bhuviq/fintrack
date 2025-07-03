@@ -11,11 +11,11 @@ import { CategoryForm, type CategoryFormValues } from './category-form';
 type Category = (typeof MOCK_DATA.categories)[0];
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = React.useState<Category[]>(MOCK_DATA.categories);
+  const [categories, setCategories] = React.useState<Category[]>(MOCK_DATA.categories.filter(c => c.type !== 'investment'));
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [editingCategory, setEditingCategory] = React.useState<Category | null>(null);
 
-  const categoryTypes: Category['type'][] = ['expense', 'income', 'investment'];
+  const categoryTypes: Category['type'][] = ['expense', 'income'];
 
   const handleAddCategory = () => {
     setEditingCategory(null);
@@ -56,7 +56,7 @@ export default function CategoriesPage() {
         <div>
           <h1 className="text-2xl font-bold">Categories</h1>
           <p className="text-muted-foreground">
-            Manage your transaction and investment categories.
+            Manage your transaction categories.
           </p>
         </div>
         <Button onClick={handleAddCategory}>

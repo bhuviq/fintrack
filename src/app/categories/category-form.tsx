@@ -31,7 +31,7 @@ const categorySchema = z.object({
   name: z.string().min(2, {
     message: 'Category name must be at least 2 characters.',
   }),
-  type: z.enum(['expense', 'income', 'investment']),
+  type: z.enum(['expense', 'income']),
 });
 
 export type CategoryFormValues = z.infer<typeof categorySchema>;
@@ -134,12 +134,6 @@ export function CategoryForm({
                           <RadioGroupItem value="income" />
                         </FormControl>
                         <FormLabel className="font-normal capitalize">Income</FormLabel>
-                      </FormItem>
-                       <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="investment" />
-                        </FormControl>
-                        <FormLabel className="font-normal capitalize">Investment</FormLabel>
                       </FormItem>
                     </RadioGroup>
                   </FormControl>

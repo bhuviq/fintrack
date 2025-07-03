@@ -23,11 +23,13 @@ import {
   LogOut,
   Wallet,
   Shapes,
+  Landmark,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
+  { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/investments', label: 'Investments', icon: Briefcase },
   { href: '/budgets', label: 'Budgets', icon: PiggyBank },
   { href: '/goals', label: 'Goals', icon: Target },

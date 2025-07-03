@@ -6,6 +6,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 const pageTitles: { [key: string]: string } = {
   '/': 'Dashboard',
   '/transactions': 'Transactions',
+  '/accounts': 'Accounts',
   '/investments': 'Investments',
   '/budgets': 'Budgets',
   '/goals': 'Goals',

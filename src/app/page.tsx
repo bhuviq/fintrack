@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import {
   Card,
   CardContent,
@@ -36,7 +37,26 @@ import {
 import { MOCK_DATA } from '@/lib/data';
 
 export default function DashboardPage() {
-  const { summary, recentTransactions, spending, goals } = MOCK_DATA;
+  const { recentTransactions, spending, goals, investments, accounts } = MOCK_DATA;
+
+  const summary = React.useMemo(() => {
+    const totalInvestments = investments.reduce((acc, inv) => acc + inv.value, 0);
+    const bankAccountsBalance = accounts
+      .filter(acc => acc.type === 'bank')
+      .reduce((acc, b) => acc + b.balance, 0);
+    const creditCardDebt = accounts
+      .filter(acc => acc.type === 'credit-card')
+      .reduce((acc, cc) => acc + cc.balance, 0);
+
+    const netWorth = totalInvestments + bankAccountsBalance + creditCardDebt;
+
+    return {
+        netWorth,
+        bankAccounts: bankAccountsBalance,
+        investments: totalInvestments,
+        creditCardDebt,
+    }
+  }, [investments, accounts]);
 
   const summaryCards = [
     {
@@ -56,7 +76,7 @@ export default function DashboardPage() {
     },
     {
       title: 'Credit Card Debt',
-      amount: summary.creditCardDebt,
+      amount: Math.abs(summary.creditCardDebt),
       icon: <CreditCard className="h-6 w-6 text-muted-foreground" />,
     },
   ];
@@ -72,7 +92,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${card.amount.toLocaleString()}
+                ${card.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </CardContent>
           </Card>

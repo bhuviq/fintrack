@@ -157,6 +157,7 @@ export default function CategoriesPage() {
                             variant="ghost" 
                             size="icon" 
                             onClick={() => handleEditCategory(category)}
+                            disabled={category.isDefault}
                           >
                             <Edit className="h-4 w-4" />
                             <span className="sr-only">Edit</span>
@@ -165,6 +166,7 @@ export default function CategoriesPage() {
                             variant="ghost" 
                             size="icon" 
                             onClick={() => handleDeleteCategory(category.id)}
+                            disabled={category.isDefault}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                             <span className="sr-only">Delete</span>

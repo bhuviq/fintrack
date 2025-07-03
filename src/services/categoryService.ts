@@ -1,6 +1,7 @@
 import { db, auth } from '@/lib/firebase';
 import type { Category, NewCategory } from '@/lib/types';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { ALL_DEFAULT_CATEGORIES } from '@/lib/constants';
 
 const categoriesCollection = collection(db, 'categories');
 
@@ -12,14 +13,25 @@ const getUserId = () => {
 
 export const getCategories = async (): Promise<Category[]> => {
     const userId = getUserId();
+    
+    // Default categories are not stored in the database, they are constants.
+    // We mark them as `isDefault` so the UI can treat them as read-only.
+    const defaultCategories: Category[] = ALL_DEFAULT_CATEGORIES.map(cat => ({
+        ...cat,
+        id: `default-${cat.name.replace(/\s+/g, '-').toLowerCase()}`, // generate a stable ID
+        isDefault: true,
+    }));
+
+    // Fetch user-specific categories from Firestore
     const q = query(categoriesCollection, where("userId", "==", userId));
     const snapshot = await getDocs(q);
-    const categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
-    
-    // Sort categories alphabetically by name
-    categories.sort((a, b) => a.name.localeCompare(b.name));
+    const userCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
 
-    return categories;
+    // Combine and sort
+    const allCategories = [...defaultCategories, ...userCategories];
+    allCategories.sort((a, b) => a.name.localeCompare(b.name));
+
+    return allCategories;
 };
 
 export const addCategory = async (categoryData: NewCategory): Promise<string> => {

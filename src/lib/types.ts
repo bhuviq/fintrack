@@ -25,13 +25,14 @@ export type NewTransaction = Omit<Transaction, 'id' | 'userId'>;
 
 
 export interface Category {
-  id: string; // Firestore document ID
-  userId: string;
+  id: string; // Firestore document ID for custom, generated for default
+  userId?: string; // Only for custom categories stored in Firestore
   name: string;
   type: 'expense' | 'income' | 'investment';
+  isDefault?: boolean;
 }
 
-export type NewCategory = Omit<Category, 'id'| 'userId'>;
+export type NewCategory = Omit<Category, 'id' | 'userId' | 'isDefault'>;
 
 export interface Budget {
     id: string; // Firestore document ID

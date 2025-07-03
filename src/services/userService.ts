@@ -1,8 +1,7 @@
 
 import { db, auth } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
-import { doc, getDoc, updateDoc, writeBatch, collection } from 'firebase/firestore';
-import { ALL_DEFAULT_CATEGORIES } from '@/lib/constants';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 
 const userCollection = 'users';
 
@@ -24,8 +23,6 @@ export const createUserProfileAndSeedData = async (user: any): Promise<void> => 
         return;
     }
 
-    const batch = writeBatch(db);
-
     // Create User Profile
     const [firstName, ...lastNameParts] = user.displayName?.split(' ') || ['', ''];
     const lastName = lastNameParts.join(' ');
@@ -36,16 +33,8 @@ export const createUserProfileAndSeedData = async (user: any): Promise<void> => 
         email: user.email!,
         avatarUrl: user.photoURL || '',
     };
-    batch.set(userDocRef, newProfile);
-
-    // Seed Categories
-    const categoriesCollectionRef = collection(db, 'categories');
-    ALL_DEFAULT_CATEGORIES.forEach(category => {
-        const newCategoryDoc = doc(categoriesCollectionRef);
-        batch.set(newCategoryDoc, { ...category, userId: user.uid });
-    });
-
-    await batch.commit();
+    
+    await setDoc(userDocRef, newProfile);
 }
 
 

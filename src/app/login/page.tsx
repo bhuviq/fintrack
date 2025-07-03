@@ -144,16 +144,21 @@ export default function LoginPage() {
       }
       router.push('/');
     } catch (error: any) {
-      console.error('Google Sign-In Error:', error);
-      let description = error.message;
-      if (error.code === 'auth/unauthorized-domain') {
-        description = "This domain is not authorized for authentication. Please add it to your Firebase project's authorized domains.";
+      if (error.code === 'auth/popup-closed-by-user') {
+        // User closed the sign-in popup. This is not an error we need to show.
+        console.log('Sign-in popup closed by user.');
+      } else {
+        console.error('Google Sign-In Error:', error);
+        let description = error.message;
+        if (error.code === 'auth/unauthorized-domain') {
+          description = "This domain is not authorized for authentication. Please add it to your Firebase project's authorized domains.";
+        }
+        toast({
+          variant: 'destructive',
+          title: 'Sign-In Failed',
+          description: description,
+        });
       }
-      toast({
-        variant: 'destructive',
-        title: 'Sign-In Failed',
-        description: description,
-      });
     } finally {
       setIsSigningIn(false);
     }

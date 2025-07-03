@@ -142,8 +142,6 @@ export default function InvestmentsPage() {
     setCurrentPage(1); // Reset page on tab change
   }
 
-  // NOTE: This sums up values from different currencies without conversion.
-  // This is a simplification. A real-world app would need currency conversion rates.
   const { portfolioValue, totalInvestment, totalChange } = useMemo(() => {
     return filteredInvestments.reduce(
       (acc, investment) => {
@@ -168,6 +166,9 @@ export default function InvestmentsPage() {
     );
   }, [filteredInvestments]);
   
+  const totalProfit = portfolioValue - totalInvestment;
+  const totalProfitPercentage = totalInvestment !== 0 ? (totalProfit / totalInvestment) * 100 : 0;
+
   const formatAmount = (amount: number, currency: Currency) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -431,7 +432,7 @@ export default function InvestmentsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <div>
               <p className="text-sm text-muted-foreground">Total Portfolio Value</p>
               <p className="text-3xl font-bold">{formatGlobalCurrency(portfolioValue)}</p>
@@ -439,6 +440,16 @@ export default function InvestmentsPage() {
             <div>
               <p className="text-sm text-muted-foreground">Total Investment</p>
               <p className="text-3xl font-bold">{formatGlobalCurrency(totalInvestment)}</p>
+            </div>
+            <div>
+                <p className="text-sm text-muted-foreground">Total Profit / Loss</p>
+                <div className={`flex items-center text-3xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {totalProfit >= 0 ? <ArrowUp className="h-7 w-7" /> : <ArrowDown className="h-7 w-7" />}
+                    {formatGlobalCurrency(Math.abs(totalProfit))}
+                </div>
+                 <p className={`text-sm font-medium ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {totalProfit >= 0 ? '+' : ''}{totalProfitPercentage.toFixed(2)}%
+                </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Today's Change</p>

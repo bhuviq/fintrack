@@ -103,11 +103,18 @@ export function AccountForm({
   }, [account, form, isOpen, globalCurrency]);
 
   const handleSubmit = (values: AccountFormValues) => {
-    const submissionData = { ...values };
-    if (submissionData.type === 'credit-card' && submissionData.balance > 0) {
+    const submissionData: Partial<AccountFormValues> = { ...values };
+    
+    if (submissionData.type === 'credit-card' && submissionData.balance && submissionData.balance > 0) {
       submissionData.balance = -Math.abs(submissionData.balance);
     }
-    onSubmit({ ...submissionData, id: account?.id });
+
+    if (submissionData.type === 'bank') {
+      delete submissionData.limit;
+      delete submissionData.dueDate;
+    }
+
+    onSubmit({ ...submissionData, id: account?.id } as AccountFormValues);
     onOpenChange(false);
   };
 

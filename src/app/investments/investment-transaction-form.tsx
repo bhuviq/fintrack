@@ -47,12 +47,14 @@ interface InvestmentTransactionFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSubmit: (data: InvestmentTransactionFormValues) => void;
+  investmentCategory?: string;
 }
 
 export function InvestmentTransactionForm({
   isOpen,
   onOpenChange,
   onSubmit,
+  investmentCategory,
 }: InvestmentTransactionFormProps) {
   const form = useForm<InvestmentTransactionFormValues>({
     resolver: zodResolver(investmentTransactionSchema),
@@ -170,11 +172,15 @@ export function InvestmentTransactionForm({
               name="quantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Quantity</FormLabel>
+                  <FormLabel>
+                    {investmentCategory === 'Gold' ? 'Weight (oz)' : 'Quantity'}
+                  </FormLabel>
                   <FormControl>
                     <Input
                       type="number"
-                      placeholder="e.g. 10"
+                      placeholder={
+                        investmentCategory === 'Gold' ? 'e.g. 1.5' : 'e.g. 10'
+                      }
                       {...field}
                       value={field.value ?? ''}
                     />

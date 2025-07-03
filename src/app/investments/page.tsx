@@ -166,6 +166,25 @@ export default function InvestmentsPage() {
     setIsTransactionSheetOpen(false);
   };
 
+  const formatQuantity = (quantity: number, category: string) => {
+    if (category === 'Real Estate') {
+      return 'N/A';
+    }
+    if (category === 'Mutual Funds') {
+      return quantity.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+      });
+    }
+    if (category === 'Gold') {
+      return `${quantity.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 3,
+      })} oz`;
+    }
+    return quantity.toLocaleString();
+  };
+
   return (
     <div className="space-y-6">
        <div className="flex items-center justify-between">
@@ -242,7 +261,7 @@ export default function InvestmentsPage() {
                     <Badge variant="outline">{investment.category}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>
-                  <TableCell className="text-right font-medium">{quantity.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-medium">{formatQuantity(quantity, investment.category)}</TableCell>
                   <TableCell className="text-right font-medium">${investment.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     <div className="flex items-center justify-end">
@@ -297,6 +316,7 @@ export default function InvestmentsPage() {
         isOpen={isTransactionSheetOpen}
         onOpenChange={setIsTransactionSheetOpen}
         onSubmit={handleSaveInvestmentTransaction}
+        investmentCategory={historyInvestment?.category}
        />
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>

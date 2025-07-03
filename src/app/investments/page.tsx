@@ -122,7 +122,7 @@ export default function InvestmentsPage() {
       const fromDate = new Date(date.from.setHours(0, 0, 0, 0));
       const toDate = date.to ? new Date(date.to.setHours(23, 59, 59, 999)) : fromDate;
       items = items.filter(investment => 
-        investment.history.some(transaction => {
+        (investment.history || []).some(transaction => {
             const transactionDate = new Date(transaction.date);
             return transactionDate >= fromDate && transactionDate <= toDate;
         })

@@ -131,8 +131,8 @@ export function InvestmentHistorySheet({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {investment.history.map((item, index) => (
-                <TableRow key={index}>
+              {(investment.history || []).map((item, index) => (
+                <TableRow key={item.id || index}>
                   <TableCell className="text-muted-foreground">{item.date}</TableCell>
                   <TableCell>
                     <Badge variant={item.type === 'buy' ? 'secondary' : 'destructive'}>

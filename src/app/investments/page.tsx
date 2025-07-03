@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ArrowUp, ArrowDown, MoreHorizontal, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { InvestmentForm, type InvestmentFormValues } from './investment-form';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Investment = (typeof MOCK_DATA.investments)[0];
 
@@ -34,14 +35,27 @@ export default function InvestmentsPage() {
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [investmentToDelete, setInvestmentToDelete] = useState<Investment | null>(null);
+  const [activeTab, setActiveTab] = useState('All');
 
   const investmentCategories = useMemo(
     () => MOCK_DATA.categories.filter((c) => c.type === 'investment'),
     []
   );
 
-  const totalValue = investments.reduce((acc, investment) => acc + investment.value, 0);
-  const totalChange = investments.reduce((acc, investment) => acc + investment.changeAmount, 0);
+  const portfolioCategories = useMemo(
+    () => ['All', ...Array.from(new Set(investments.map((i) => i.category)))],
+    [investments]
+  );
+
+  const filteredInvestments = useMemo(() => {
+    if (activeTab === 'All') {
+      return investments;
+    }
+    return investments.filter((i) => i.category === activeTab);
+  }, [investments, activeTab]);
+
+  const totalValue = filteredInvestments.reduce((acc, investment) => acc + investment.value, 0);
+  const totalChange = filteredInvestments.reduce((acc, investment) => acc + investment.changeAmount, 0);
 
   const handleAddInvestment = () => {
     setEditingInvestment(null);
@@ -124,10 +138,22 @@ export default function InvestmentsPage() {
           </Button>
       </div>
 
+      <Tabs defaultValue="All" onValueChange={setActiveTab} value={activeTab}>
+        <TabsList>
+          {portfolioCategories.map((category) => (
+            <TabsTrigger key={category} value={category}>
+              {category}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
       <Card>
         <CardHeader>
           <CardTitle>Portfolio Summary</CardTitle>
-          <CardDescription>An overview of your investment performance.</CardDescription>
+          <CardDescription>
+            An overview of your investment performance for {activeTab === 'All' ? 'all categories' : activeTab}.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
@@ -162,7 +188,7 @@ export default function InvestmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {investments.map((investment) => (
+              {filteredInvestments.map((investment) => (
                 <TableRow key={investment.id}>
                   <TableCell className="font-medium">{investment.name}</TableCell>
                   <TableCell>

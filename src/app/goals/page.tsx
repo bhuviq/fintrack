@@ -39,7 +39,7 @@ export default function GoalsPage() {
       const updatedGoalData = goals.find(g => g.id === selectedGoal.id);
       setSelectedGoal(updatedGoalData || null);
     }
-  }, [goals]); // This effect runs only when the main goals list changes.
+  }, [goals, selectedGoal?.id]);
 
 
   const handleAddGoal = () => {
@@ -91,14 +91,14 @@ export default function GoalsPage() {
     if (!selectedGoal) return;
 
     const newContribution = {
-      id: Math.max(0, ...selectedGoal.history.map(h => h.id)) + 1,
+      id: Math.max(0, ...(selectedGoal.history || []).map(h => h.id)) + 1,
       date: format(data.date, 'yyyy-MM-dd'),
       amount: data.amount,
     };
 
     setGoals(currentGoals => currentGoals.map(g => {
       if (g.id === selectedGoal.id) {
-        const updatedHistory = [...g.history, newContribution];
+        const updatedHistory = [...(g.history || []), newContribution];
         const updatedCurrent = updatedHistory.reduce((acc, item) => acc + item.amount, 0);
         return { ...g, history: updatedHistory, current: updatedCurrent };
       }
@@ -124,7 +124,7 @@ export default function GoalsPage() {
 
     setGoals(currentGoals => currentGoals.map(g => {
       if (g.id === contributionToDelete.goalId) {
-        const updatedHistory = g.history.filter(h => h.id !== contributionToDelete.contributionId);
+        const updatedHistory = (g.history || []).filter(h => h.id !== contributionToDelete.contributionId);
         const updatedCurrent = updatedHistory.reduce((acc, item) => acc + item.amount, 0);
         return { ...g, history: updatedHistory, current: updatedCurrent };
       }
@@ -149,7 +149,7 @@ export default function GoalsPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {goals.map((goal) => {
-          const currentAmount = goal.history.reduce((acc, item) => acc + item.amount, 0);
+          const currentAmount = (goal.history || []).reduce((acc, item) => acc + item.amount, 0);
           const percentage = goal.target > 0 ? (currentAmount / goal.target) * 100 : 0;
 
           return (

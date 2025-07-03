@@ -39,6 +39,8 @@ export function GoalHistorySheet({
   if (!goal) {
     return null;
   }
+  
+  const history = goal.history || [];
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -48,7 +50,7 @@ export function GoalHistorySheet({
           <SheetDescription>View all contributions made to this goal.</SheetDescription>
         </SheetHeader>
         <div className="py-4">
-          {goal.history.length > 0 ? (
+          {history.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -58,7 +60,7 @@ export function GoalHistorySheet({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {goal.history
+                {history
                     .slice() // Create a shallow copy to avoid mutating the original array
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                     .map((item) => (

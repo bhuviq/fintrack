@@ -62,25 +62,46 @@ export default function InvestmentsPage() {
 
   const handleSaveInvestment = (data: InvestmentFormValues) => {
     if (editingInvestment && data.id) {
-        setInvestments(
-            investments.map((i) =>
-                i.id === data.id ? { ...i, ...data, value: Number(data.value) } : i
-            )
-        );
+      const originalInvestment = investments.find((i) => i.id === data.id);
+      if (!originalInvestment) return;
+
+      const newValue = Number(data.value);
+      // "Start of day" value is the current value minus today's change.
+      const startOfDayValue =
+        originalInvestment.value - originalInvestment.changeAmount;
+
+      const newChangeAmount = newValue - startOfDayValue;
+      const newChangePercentage =
+        startOfDayValue !== 0 ? (newChangeAmount / startOfDayValue) * 100 : 0;
+
+      setInvestments(
+        investments.map((i) =>
+          i.id === data.id
+            ? {
+                ...i,
+                name: data.name,
+                symbol: data.symbol,
+                value: newValue,
+                change: newChangePercentage,
+                changeAmount: newChangeAmount,
+              }
+            : i
+        )
+      );
     } else {
-        const newInvestment: Investment = {
-            id: Math.max(0, ...investments.map(i => i.id)) + 1,
-            name: data.name,
-            symbol: data.symbol,
-            value: Number(data.value),
-            change: 0, 
-            changeAmount: 0,
-        };
-        setInvestments([newInvestment, ...investments]);
+      const newInvestment: Investment = {
+        id: Math.max(0, ...investments.map((i) => i.id)) + 1,
+        name: data.name,
+        symbol: data.symbol,
+        value: Number(data.value),
+        change: 0,
+        changeAmount: 0,
+      };
+      setInvestments([newInvestment, ...investments]);
     }
     setIsSheetOpen(false);
     setEditingInvestment(null);
-  }
+  };
 
   return (
     <div className="space-y-6">

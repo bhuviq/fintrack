@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
   SidebarHeader,
@@ -39,6 +39,11 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    router.push('/login');
+  };
 
   return (
     <Sidebar>
@@ -75,7 +80,7 @@ export function AppSidebar() {
             <p className="text-sm font-semibold">User</p>
             <p className="text-xs text-muted-foreground">user@fintrack.com</p>
           </div>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
           </Button>
         </div>

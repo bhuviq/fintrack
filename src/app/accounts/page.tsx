@@ -28,16 +28,40 @@ import { AccountForm, type AccountFormValues } from './account-form';
 import { Progress } from '@/components/ui/progress';
 
 type Account = (typeof MOCK_DATA.accounts)[number];
+type Transaction = (typeof MOCK_DATA.allTransactions)[number];
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = React.useState<Account[]>(MOCK_DATA.accounts);
+  const [transactions, setTransactions] = React.useState<Transaction[]>(MOCK_DATA.allTransactions);
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [editingAccount, setEditingAccount] = React.useState<Account | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
   const [accountToDelete, setAccountToDelete] = React.useState<Account | null>(null);
 
-  const bankAccounts = accounts.filter(acc => acc.type === 'bank');
-  const creditCardAccounts = accounts.filter(acc => acc.type === 'credit-card');
+  const accountsWithCurrentBalance = React.useMemo(() => {
+    return accounts.map(account => {
+        const relevantTransactions = transactions.filter(t => t.accountId === account.id);
+        const transactionTotal = relevantTransactions.reduce((total, t) => {
+            if (account.type === 'bank') {
+                return t.type === 'income' ? total + t.amount : total - t.amount;
+            }
+            if (account.type === 'credit-card') {
+                // For credit cards, expenses increase the negative balance (debt)
+                // and income (like a payment or return) decreases it.
+                return t.type === 'expense' ? total - t.amount : total + t.amount;
+            }
+            return total;
+        }, 0);
+        
+        // The balance from MOCK_DATA acts as the opening balance.
+        const currentBalance = account.balance + transactionTotal;
+        return { ...account, currentBalance };
+    });
+  }, [accounts, transactions]);
+
+
+  const bankAccounts = accountsWithCurrentBalance.filter(acc => acc.type === 'bank');
+  const creditCardAccounts = accountsWithCurrentBalance.filter(acc => acc.type === 'credit-card');
 
   const handleAddAccount = () => {
     setEditingAccount(null);
@@ -57,6 +81,8 @@ export default function AccountsPage() {
   const confirmDelete = () => {
     if (accountToDelete) {
       setAccounts(accounts.filter(acc => acc.id !== accountToDelete.id));
+      // Also delete associated transactions
+      setTransactions(transactions.filter(t => t.accountId !== accountToDelete.id));
     }
     setDeleteAlertOpen(false);
     setAccountToDelete(null);
@@ -113,7 +139,7 @@ export default function AccountsPage() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {creditCardAccounts.map((account) => {
                  if (account.type !== 'credit-card') return null;
-                 const utilization = account.limit ? (Math.abs(account.balance) / account.limit) * 100 : 0;
+                 const utilization = account.limit ? (Math.abs(account.currentBalance) / account.limit) * 100 : 0;
                 return (
                   <Card key={account.id} className="flex flex-col group relative">
                     <CardHeader>
@@ -142,7 +168,7 @@ export default function AccountsPage() {
                     <CardContent className="flex-1 space-y-4">
                       <div>
                         <p className="text-sm text-muted-foreground">Outstanding</p>
-                        <p className="text-2xl font-bold">${Math.abs(account.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-2xl font-bold">${Math.abs(account.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         <p className="text-sm text-muted-foreground">of ${account.limit?.toLocaleString()} limit</p>
                       </div>
                       <div>
@@ -189,7 +215,7 @@ export default function AccountsPage() {
                                 <TableCell>
                                     <Badge variant={'secondary'}>Bank Account</Badge>
                                 </TableCell>
-                                <TableCell className="text-right font-medium">{formatBalance(account.balance)}</TableCell>
+                                <TableCell className="text-right font-medium">{formatBalance(account.currentBalance)}</TableCell>
                                 <TableCell>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -237,7 +263,7 @@ export default function AccountsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this account.
+              This action cannot be undone. This will permanently delete this account and all associated transactions.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

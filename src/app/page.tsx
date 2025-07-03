@@ -37,16 +37,32 @@ import {
 import { MOCK_DATA } from '@/lib/data';
 
 export default function DashboardPage() {
-  const { recentTransactions, spending, goals, investments, accounts } = MOCK_DATA;
+  const { recentTransactions, spending, goals, investments, accounts, allTransactions } = MOCK_DATA;
 
   const summary = React.useMemo(() => {
     const totalInvestments = investments.reduce((acc, inv) => acc + inv.value, 0);
-    const bankAccountsBalance = accounts
+
+    const accountBalances = accounts.map(account => {
+        const relevantTransactions = allTransactions.filter(t => t.accountId === account.id);
+        const transactionTotal = relevantTransactions.reduce((total, t) => {
+            if (account.type === 'bank') {
+                return t.type === 'income' ? total + t.amount : total - t.amount;
+            }
+            if (account.type === 'credit-card') {
+                return t.type === 'expense' ? total - t.amount : total + t.amount;
+            }
+            return total;
+        }, 0);
+        return { ...account, currentBalance: account.balance + transactionTotal };
+    });
+
+    const bankAccountsBalance = accountBalances
       .filter(acc => acc.type === 'bank')
-      .reduce((acc, b) => acc + b.balance, 0);
-    const creditCardDebt = accounts
+      .reduce((acc, b) => acc + b.currentBalance, 0);
+      
+    const creditCardDebt = accountBalances
       .filter(acc => acc.type === 'credit-card')
-      .reduce((acc, cc) => acc + cc.balance, 0);
+      .reduce((acc, cc) => acc + cc.currentBalance, 0);
 
     const netWorth = totalInvestments + bankAccountsBalance + creditCardDebt;
 
@@ -56,7 +72,7 @@ export default function DashboardPage() {
         investments: totalInvestments,
         creditCardDebt,
     }
-  }, [investments, accounts]);
+  }, [investments, accounts, allTransactions]);
 
   const summaryCards = [
     {

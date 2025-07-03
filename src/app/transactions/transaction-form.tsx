@@ -53,6 +53,7 @@ const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
   date: z.date(),
   category: z.string().min(1, { message: 'Please select a category.' }),
+  accountId: z.coerce.number({ required_error: 'Please select an account.' }).min(1, { message: 'Please select an account.'}),
 });
 
 export type TransactionFormValues = z.infer<typeof transactionSchema>;
@@ -79,10 +80,19 @@ export function TransactionForm({
       type: 'expense',
       date: new Date(),
       category: '',
+      accountId: undefined,
     },
   });
 
   const transactionType = form.watch('type');
+
+  const availableAccounts = React.useMemo(() => {
+    if (transactionType === 'income') {
+      return MOCK_DATA.accounts.filter((acc) => acc.type === 'bank');
+    }
+    return MOCK_DATA.accounts;
+  }, [transactionType]);
+
 
   const availableCategories = React.useMemo(
     () => MOCK_DATA.categories.filter((c) => c.type === transactionType),
@@ -99,6 +109,7 @@ export function TransactionForm({
           type: transaction.type,
           date: new Date(transaction.date),
           category: transaction.category,
+          accountId: transaction.accountId,
         });
       } else {
         form.reset({
@@ -107,6 +118,7 @@ export function TransactionForm({
           type: 'expense',
           date: new Date(),
           category: '',
+          accountId: undefined,
         });
       }
     }
@@ -116,7 +128,16 @@ export function TransactionForm({
     // When the transaction type changes, reset the category field
     // as the available categories have changed.
     form.setValue('category', '');
-  }, [transactionType, form]);
+
+    // Also reset account if it's not valid for the new type
+    const currentAccountId = form.getValues('accountId');
+    if (currentAccountId) {
+        const accountIsValid = availableAccounts.some(acc => acc.id === currentAccountId);
+        if (!accountIsValid) {
+            form.setValue('accountId', undefined as any, { shouldValidate: true });
+        }
+    }
+  }, [transactionType, form, availableAccounts]);
 
 
   const handleSubmit = (values: TransactionFormValues) => {
@@ -142,6 +163,66 @@ export function TransactionForm({
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-6 py-4"
           >
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Type</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="flex space-x-4"
+                    >
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="expense" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Expense</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="income" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Income</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="accountId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value?.toString()}
+                    defaultValue={field.value?.toString()}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableAccounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id.toString()}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
             <FormField
               control={form.control}
               name="description"
@@ -173,36 +254,7 @@ export function TransactionForm({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Type</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      className="flex space-x-4"
-                    >
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="expense" />
-                        </FormControl>
-                        <FormLabel className="font-normal">Expense</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="income" />
-                        </FormControl>
-                        <FormLabel className="font-normal">Income</FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            
             <FormField
               control={form.control}
               name="date"

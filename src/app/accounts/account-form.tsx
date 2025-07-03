@@ -80,7 +80,7 @@ export function AccountForm({
           id: account.id,
           name: account.name,
           type: account.type,
-          balance: account.type === 'credit-card' ? Math.abs(account.balance) : account.balance,
+          balance: account.balance,
           limit: account.type === 'credit-card' ? account.limit : undefined,
           dueDate: account.type === 'credit-card' ? account.dueDate : undefined,
         });
@@ -98,7 +98,7 @@ export function AccountForm({
 
   const handleSubmit = (values: AccountFormValues) => {
     const submissionData = { ...values };
-    if (submissionData.type === 'credit-card') {
+    if (submissionData.type === 'credit-card' && submissionData.balance > 0) {
       submissionData.balance = -Math.abs(submissionData.balance);
     }
     onSubmit({ ...submissionData, id: account?.id });
@@ -166,7 +166,7 @@ export function AccountForm({
               name="balance"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{accountType === 'credit-card' ? 'Current Outstanding' : 'Current Balance'}</FormLabel>
+                  <FormLabel>{accountType === 'credit-card' ? 'Initial Outstanding Balance' : 'Opening Balance'}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"

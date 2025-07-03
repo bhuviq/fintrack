@@ -127,6 +127,7 @@ export default function TransactionsPage() {
         type: data.type,
         date: format(data.date, 'yyyy-MM-dd'),
         category: data.category,
+        accountId: data.accountId,
       };
       setTransactions([newTransaction, ...transactions]);
     }
@@ -195,13 +196,18 @@ export default function TransactionsPage() {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Account</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedTransactions.map((transaction) => (
+              {paginatedTransactions.map((transaction) => {
+                const account = MOCK_DATA.accounts.find(
+                  (a) => a.id === transaction.accountId
+                );
+                return (
                 <TableRow key={transaction.id}>
                   <TableCell className="text-muted-foreground">
                     {format(new Date(transaction.date), 'MMM d, yyyy')}
@@ -225,6 +231,9 @@ export default function TransactionsPage() {
                         {transaction.description}
                       </span>
                     </div>
+                  </TableCell>
+                   <TableCell>
+                    <Badge variant="secondary">{account?.name || 'N/A'}</Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{transaction.category}</Badge>
@@ -265,7 +274,7 @@ export default function TransactionsPage() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
           {totalPages > 1 && (

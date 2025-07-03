@@ -19,6 +19,7 @@ export const MOCK_DATA = {
       amount: 10.99,
       type: 'expense',
       date: '2024-07-28',
+      accountId: 3,
     },
     {
       id: 2,
@@ -27,6 +28,7 @@ export const MOCK_DATA = {
       amount: 2500,
       type: 'income',
       date: '2024-07-27',
+      accountId: 1,
     },
     {
       id: 3,
@@ -35,6 +37,7 @@ export const MOCK_DATA = {
       amount: 85.4,
       type: 'expense',
       date: '2024-07-26',
+      accountId: 4,
     },
     {
       id: 4,
@@ -43,6 +46,7 @@ export const MOCK_DATA = {
       amount: 45.5,
       type: 'expense',
       date: '2024-07-25',
+      accountId: 3,
     },
     {
       id: 5,
@@ -51,6 +55,7 @@ export const MOCK_DATA = {
       amount: 999,
       type: 'expense',
       date: '2024-07-24',
+      accountId: 4,
     },
   ],
   allTransactions: [
@@ -60,7 +65,8 @@ export const MOCK_DATA = {
         description: "Netflix",
         category: "Entertainment",
         amount: 15.99,
-        type: "expense"
+        type: "expense",
+        accountId: 3,
     },
     {
         id: 2,
@@ -68,7 +74,8 @@ export const MOCK_DATA = {
         description: "Salary",
         category: "Salary",
         amount: 4000,
-        type: "income"
+        type: "income",
+        accountId: 1,
     },
     {
         id: 3,
@@ -76,7 +83,8 @@ export const MOCK_DATA = {
         description: "Whole Foods Market",
         category: "Groceries",
         amount: 120.50,
-        type: "expense"
+        type: "expense",
+        accountId: 4,
     },
     {
         id: 4,
@@ -84,7 +92,8 @@ export const MOCK_DATA = {
         description: "Uber Ride",
         category: "Transport",
         amount: 25.75,
-        type: "expense"
+        type: "expense",
+        accountId: 3,
     },
     {
         id: 5,
@@ -92,7 +101,8 @@ export const MOCK_DATA = {
         description: "Amazon Purchase",
         category: "Shopping",
         amount: 75.99,
-        type: "expense"
+        type: "expense",
+        accountId: 4,
     },
     {
         id: 6,
@@ -100,7 +110,8 @@ export const MOCK_DATA = {
         description: "Freelance Project",
         category: "Freelance",
         amount: 500,
-        type: "income"
+        type: "income",
+        accountId: 2,
     },
     {
         id: 7,
@@ -108,7 +119,8 @@ export const MOCK_DATA = {
         description: "Starbucks",
         category: "Food & Drink",
         amount: 5.50,
-        type: "expense"
+        type: "expense",
+        accountId: 1,
     },
     {
         id: 8,
@@ -116,8 +128,27 @@ export const MOCK_DATA = {
         description: "Electricity Bill",
         category: "Utilities",
         amount: 85.00,
-        type: "expense"
+        type: "expense",
+        accountId: 1,
     },
+    {
+        id: 9,
+        date: "2024-07-20",
+        description: "Credit Card Payment",
+        category: "Payments",
+        amount: 500,
+        type: "income",
+        accountId: 3,
+    },
+    {
+        id: 10,
+        date: "2024-07-20",
+        description: "Payment to Amex",
+        category: "Payments",
+        amount: 500,
+        type: "expense",
+        accountId: 1,
+    }
   ],
   spending: [
     { name: 'Groceries', value: 850 },
@@ -186,11 +217,13 @@ export const MOCK_DATA = {
     { id: 10, name: "Salary", type: "income" },
     { id: 11, name: "Freelance", type: "income" },
     { id: 12, name: "Investment Income", type: "income" },
-    { id: 13, name: "Stocks", type: "investment" },
-    { id: 14, name: "Real Estate", type: "investment" },
-    { id: 15, name: "Mutual Funds", type: "investment" },
-    { id: 16, name: "Bonds", type: "investment" },
-    { id: 17, name: "Venture Capital", type: "investment" },
-    { id: 18, name: "Gold", type: "investment" },
+    { id: 13, name: "Payments", type: "expense" },
+    { id: 14, name: "Payments", type: "income" },
+    { id: 15, name: "Stocks", type: "investment" },
+    { id: 16, name: "Real Estate", type: "investment" },
+    { id: 17, name: "Mutual Funds", type: "investment" },
+    { id: 18, name: "Bonds", type: "investment" },
+    { id: 19, name: "Venture Capital", type: "investment" },
+    { id: 20, name: "Gold", type: "investment" },
   ],
 };

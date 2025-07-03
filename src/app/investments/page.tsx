@@ -220,21 +220,32 @@ export default function InvestmentsPage() {
 
   const handleSaveInvestment = async (data: InvestmentFormValues) => {
     try {
-        if (editingInvestment && data.id) {
-            const { id, ...investmentData} = data;
-            const originalInvestment = investments.find((i) => i.id === data.id);
+        const { id, ...investmentData } = data;
+        
+        if (editingInvestment && id) {
+            const originalInvestment = investments.find((i) => i.id === id);
             if (!originalInvestment) return;
-            const newValue = Number(data.value);
+
             const startOfDayValue = originalInvestment.value - originalInvestment.changeAmount;
-            const newChangeAmount = newValue - startOfDayValue;
+            const newChangeAmount = investmentData.value - startOfDayValue;
             const newChangePercentage = startOfDayValue !== 0 ? (newChangeAmount / startOfDayValue) * 100 : 0;
-            await updateInvestment(id, { ...investmentData, change: newChangePercentage, changeAmount: newChangeAmount });
+            
+            await updateInvestment(id, { 
+                ...investmentData,
+                change: newChangePercentage, 
+                changeAmount: newChangeAmount 
+            });
         } else {
-            await addInvestment(data as NewInvestment);
+            await addInvestment(investmentData as NewInvestment);
         }
         await fetchData();
     } catch (error) {
         console.error("Failed to save investment:", error);
+        toast({
+            variant: "destructive",
+            title: "Error Saving Investment",
+            description: "There was a problem saving your investment. Please try again.",
+        });
     }
     setIsSheetOpen(false);
     setEditingInvestment(null);

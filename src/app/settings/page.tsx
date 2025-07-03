@@ -1,6 +1,14 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import * as React from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +17,29 @@ import { Switch } from '@/components/ui/switch';
 import { Mail, Smartphone, ShieldCheck } from 'lucide-react';
 
 export default function SettingsPage() {
+  const [avatarSrc, setAvatarSrc] = React.useState(
+    'https://placehold.co/80x80.png'
+  );
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarSrc(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleChangePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="space-y-6">
-       <div>
+      <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground">
           Manage your account and profile settings.
@@ -24,11 +52,24 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center gap-4">
-             <Avatar className="h-20 w-20">
-                <AvatarImage src="https://placehold.co/80x80.png" alt="User" data-ai-hint="person avatar" />
-                <AvatarFallback>U</AvatarFallback>
+            <Avatar className="h-20 w-20">
+              <AvatarImage
+                src={avatarSrc}
+                alt="User"
+                data-ai-hint="person avatar"
+              />
+              <AvatarFallback>U</AvatarFallback>
             </Avatar>
-            <Button variant="outline">Change Photo</Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handlePhotoChange}
+              className="hidden"
+              accept="image/*"
+            />
+            <Button variant="outline" onClick={handleChangePhotoClick}>
+              Change Photo
+            </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -42,9 +83,14 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" defaultValue="user@fintrack.com" disabled />
+            <Input
+              id="email"
+              type="email"
+              defaultValue="user@fintrack.com"
+              disabled
+            />
           </div>
-           <div className="space-y-2">
+          <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
             <Input id="phone" type="tel" placeholder="e.g. +1 234 567 890" />
           </div>
@@ -56,55 +102,67 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-            <CardTitle>Two-Factor Authentication</CardTitle>
-            <CardDescription>
-                Add an extra layer of security to your account. It is highly recommended.
-            </CardDescription>
+          <CardTitle>Two-Factor Authentication</CardTitle>
+          <CardDescription>
+            Add an extra layer of security to your account. It is highly
+            recommended.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="flex items-start gap-4">
-                    <Smartphone className="h-6 w-6 text-muted-foreground mt-1" />
-                    <div>
-                        <Label htmlFor="sms-auth" className="font-medium leading-none">SMS / Text Message</Label>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            Receive a verification code via text message.
-                        </p>
-                    </div>
-                </div>
-                <Switch id="sms-auth" />
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="flex items-start gap-4">
+              <Smartphone className="h-6 w-6 text-muted-foreground mt-1" />
+              <div>
+                <Label htmlFor="sms-auth" className="font-medium leading-none">
+                  SMS / Text Message
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Receive a verification code via text message.
+                </p>
+              </div>
             </div>
-            <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="flex items-start gap-4">
-                    <Mail className="h-6 w-6 text-muted-foreground mt-1" />
-                    <div>
-                        <Label htmlFor="email-auth" className="font-medium leading-none">Email</Label>
-                        <p className="text-sm text-muted-foreground mt-1">
-                           Receive a verification code via email.
-                        </p>
-                    </div>
-                </div>
-                <Switch id="email-auth" />
+            <Switch id="sms-auth" />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="flex items-start gap-4">
+              <Mail className="h-6 w-6 text-muted-foreground mt-1" />
+              <div>
+                <Label htmlFor="email-auth" className="font-medium leading-none">
+                  Email
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Receive a verification code via email.
+                </p>
+              </div>
             </div>
-            <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="flex items-start gap-4">
-                    <ShieldCheck className="h-6 w-6 text-muted-foreground mt-1" />
-                    <div>
-                        <Label htmlFor="authenticator-app" className="font-medium leading-none">Authenticator App</Label>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            Use an app like Google Authenticator or Authy.
-                        </p>
-                    </div>
-                </div>
-                <Switch id="authenticator-app" />
+            <Switch id="email-auth" />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="flex items-start gap-4">
+              <ShieldCheck className="h-6 w-6 text-muted-foreground mt-1" />
+              <div>
+                <Label
+                  htmlFor="authenticator-app"
+                  className="font-medium leading-none"
+                >
+                  Authenticator App
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Use an app like Google Authenticator or Authy.
+                </p>
+              </div>
             </div>
+            <Switch id="authenticator-app" />
+          </div>
         </CardContent>
       </Card>
 
-       <Card>
+      <Card>
         <CardHeader>
           <CardTitle>Change Password</CardTitle>
-          <CardDescription>Update your password. It is recommended to use a strong password.</CardDescription>
+          <CardDescription>
+            Update your password. It is recommended to use a strong password.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -115,7 +173,7 @@ export default function SettingsPage() {
             <Label htmlFor="newPassword">New Password</Label>
             <Input id="newPassword" type="password" />
           </div>
-           <div className="space-y-2">
+          <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm New Password</Label>
             <Input id="confirmPassword" type="password" />
           </div>

@@ -23,16 +23,16 @@ import {
   SheetFooter,
   SheetClose,
 } from '@/components/ui/sheet';
-import type { MOCK_DATA } from '@/lib/data';
+import type { Goal } from '@/lib/types';
+
 
 const goalSchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(),
   name: z.string().min(3, { message: 'Goal name must be at least 3 characters.' }),
   target: z.coerce.number().positive({ message: 'Target must be a positive number.' }),
 });
 
 export type GoalFormValues = z.infer<typeof goalSchema>;
-type Goal = (typeof MOCK_DATA.goals)[number];
 
 interface GoalFormProps {
   isOpen: boolean;

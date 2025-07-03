@@ -30,10 +30,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { MOCK_DATA } from '@/lib/data';
+import type { Account } from '@/lib/types';
+
 
 const accountSchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(),
   name: z.string().min(2, {
     message: 'Account name must be at least 2 characters.',
   }),
@@ -44,8 +45,6 @@ const accountSchema = z.object({
 });
 
 export type AccountFormValues = z.infer<typeof accountSchema>;
-type Account = (typeof MOCK_DATA.accounts)[number];
-
 
 interface AccountFormProps {
   isOpen: boolean;

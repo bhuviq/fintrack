@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { MOCK_DATA } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -29,14 +28,21 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, diff
 import type { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { BudgetForm, type BudgetFormValues } from './budget-form';
+import { getBudgets, addBudget, updateBudget, deleteBudget } from '@/services/budgetService';
+import { getTransactions } from '@/services/transactionService';
+import { getCategories } from '@/services/categoryService';
+import type { Budget, Transaction, Category, NewBudget } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-type Budget = (typeof MOCK_DATA.budgets)[0];
 
 const ITEMS_PER_PAGE = 6;
 
 export default function BudgetsPage() {
-  const { allTransactions } = MOCK_DATA;
-  const [budgets, setBudgets] = React.useState<Budget[]>(MOCK_DATA.budgets);
+  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [budgets, setBudgets] = React.useState<Budget[]>([]);
+  const [categories, setCategories] = React.useState<Category[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -47,6 +53,29 @@ export default function BudgetsPage() {
   const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
   const [budgetToDelete, setBudgetToDelete] = React.useState<Budget | null>(null);
   const [currentPage, setCurrentPage] = React.useState(1);
+
+  const fetchData = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const [fetchedBudgets, fetchedTransactions, fetchedCategories] = await Promise.all([
+            getBudgets(),
+            getTransactions(),
+            getCategories(),
+        ]);
+        setBudgets(fetchedBudgets);
+        setTransactions(fetchedTransactions);
+        setCategories(fetchedCategories);
+    } catch (error) {
+        console.error("Failed to fetch data:", error);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
 
   const handleAddBudget = () => {
     setEditingBudget(null);
@@ -63,25 +92,30 @@ export default function BudgetsPage() {
     setDeleteAlertOpen(true);
   };
   
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (budgetToDelete) {
-        setBudgets(budgets.filter(b => b.id !== budgetToDelete.id));
+        try {
+            await deleteBudget(budgetToDelete.id);
+            await fetchData();
+        } catch (error) {
+            console.error("Failed to delete budget:", error);
+        }
     }
     setDeleteAlertOpen(false);
     setBudgetToDelete(null);
   }
 
-  const handleSaveBudget = (data: BudgetFormValues) => {
-    if (editingBudget && data.id) {
-        setBudgets(budgets.map((b) => b.id === data.id ? { ...b, ...data, total: Number(data.total) } : b));
-    } else {
-        const newBudget: Budget = {
-            id: Math.max(0, ...budgets.map(b => b.id)) + 1,
-            category: data.category,
-            total: Number(data.total),
-            spent: 0, // This will be recalculated
-        };
-        setBudgets([newBudget, ...budgets]);
+  const handleSaveBudget = async (data: BudgetFormValues) => {
+    try {
+        const { id, ...budgetData } = data;
+        if (editingBudget && id) {
+            await updateBudget(id, { ...budgetData, total: Number(budgetData.total) });
+        } else {
+            await addBudget({ ...budgetData, total: Number(budgetData.total) } as NewBudget);
+        }
+        await fetchData();
+    } catch (error) {
+        console.error("Failed to save budget:", error);
     }
     setIsSheetOpen(false);
     setEditingBudget(null);
@@ -129,7 +163,7 @@ export default function BudgetsPage() {
     return budgets.map(budget => {
       const proratedTotal = (budget.total / daysInMonth) * durationInDays;
 
-      const spent = allTransactions
+      const spent = transactions
         .filter(t => 
             t.category === budget.category && 
             t.type === 'expense' &&
@@ -144,13 +178,31 @@ export default function BudgetsPage() {
         total: proratedTotal,
       };
     });
-  }, [date, budgets, allTransactions]);
+  }, [date, budgets, transactions]);
 
   const totalPages = Math.ceil(calculatedBudgets.length / ITEMS_PER_PAGE);
   const paginatedBudgets = calculatedBudgets.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+  
+  if (isLoading) {
+    return (
+        <Card>
+            <CardHeader>
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-6 w-48" />
+                <div className="flex flex-wrap items-center gap-2 pt-4">
+                    {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-9 w-24" />)}
+                </div>
+            </CardHeader>
+            <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-lg" />)}
+            </CardContent>
+        </Card>
+    )
+  }
+
 
   return (
     <>
@@ -286,6 +338,7 @@ export default function BudgetsPage() {
         budget={editingBudget}
         onSubmit={handleSaveBudget}
         existingCategories={budgets.map(b => b.category)}
+        allCategories={categories}
       />
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>

@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { MOCK_DATA } from '@/lib/data';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -18,18 +17,38 @@ import { format } from 'date-fns';
 import { GoalForm, type GoalFormValues } from './goal-form';
 import { GoalContributionForm, type ContributionFormValues } from './goal-contribution-form';
 import { GoalHistorySheet } from './goal-history-sheet';
+import { getGoals, addGoal, updateGoal, deleteGoal, addContribution, deleteContribution } from '@/services/goalService';
+import type { Goal, NewGoal } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-type Goal = (typeof MOCK_DATA.goals)[number];
 
 export default function GoalsPage() {
-  const [goals, setGoals] = React.useState<Goal[]>(MOCK_DATA.goals);
+  const [goals, setGoals] = React.useState<Goal[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
   const [isGoalFormOpen, setIsGoalFormOpen] = React.useState(false);
   const [isContributionFormOpen, setIsContributionFormOpen] = React.useState(false);
   const [isHistorySheetOpen, setIsHistorySheetOpen] = React.useState(false);
   const [selectedGoal, setSelectedGoal] = React.useState<Goal | null>(null);
   const [deleteGoalAlertOpen, setDeleteGoalAlertOpen] = React.useState(false);
   const [deleteContributionAlertOpen, setDeleteContributionAlertOpen] = React.useState(false);
-  const [contributionToDelete, setContributionToDelete] = React.useState<{ goalId: number; contributionId: number } | null>(null);
+  const [contributionToDelete, setContributionToDelete] = React.useState<{ goalId: string; contributionId: string } | null>(null);
+
+  const fetchData = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const fetchedGoals = await getGoals();
+        setGoals(fetchedGoals);
+    } catch (error) {
+        console.error("Failed to fetch goals:", error);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // This effect ensures that if the 'selectedGoal' is being displayed in a sheet,
   // it always has the most up-to-date data from the main 'goals' list.
@@ -67,26 +86,30 @@ export default function GoalsPage() {
     setDeleteGoalAlertOpen(true);
   };
 
-  const confirmDeleteGoal = () => {
+  const confirmDeleteGoal = async () => {
     if (selectedGoal) {
-      setGoals(currentGoals => currentGoals.filter(g => g.id !== selectedGoal.id));
+      try {
+        await deleteGoal(selectedGoal.id);
+        await fetchData();
+      } catch (error) {
+        console.error("Failed to delete goal:", error);
+      }
     }
     setDeleteGoalAlertOpen(false);
     setSelectedGoal(null);
   };
 
-  const handleSaveGoal = (data: GoalFormValues) => {
-    if (selectedGoal && data.id) {
-      setGoals(currentGoals => currentGoals.map(g => g.id === data.id ? { ...g, name: data.name, target: data.target } : g));
-    } else {
-      const newGoal: Goal = {
-        id: Math.max(0, ...goals.map(g => g.id).concat(0)) + 1,
-        name: data.name,
-        target: data.target,
-        current: 0,
-        history: [],
-      };
-      setGoals(currentGoals => [newGoal, ...currentGoals]);
+  const handleSaveGoal = async (data: GoalFormValues) => {
+    try {
+        const { id, ...goalData } = data;
+        if (selectedGoal && id) {
+            await updateGoal(id, { name: goalData.name, target: goalData.target });
+        } else {
+            await addGoal(goalData as NewGoal);
+        }
+        await fetchData();
+    } catch (error) {
+        console.error("Failed to save goal:", error);
     }
     setIsGoalFormOpen(false);
     setSelectedGoal(null);
@@ -97,24 +120,17 @@ export default function GoalsPage() {
     setIsContributionFormOpen(true);
   };
 
-  const handleSaveContribution = (data: ContributionFormValues) => {
+  const handleSaveContribution = async (data: ContributionFormValues) => {
     if (!selectedGoal) return;
-
-    const newContribution = {
-      id: Math.max(0, ...(selectedGoal.history || []).map(h => h.id).concat(0)) + 1,
-      date: format(data.date, 'yyyy-MM-dd'),
-      amount: data.amount,
-    };
-
-    setGoals(currentGoals => currentGoals.map(g => {
-      if (g.id === selectedGoal.id) {
-        const updatedHistory = [...(g.history || []), newContribution];
-        const updatedCurrent = updatedHistory.reduce((acc, item) => acc + item.amount, 0);
-        return { ...g, history: updatedHistory, current: updatedCurrent };
-      }
-      return g;
-    }));
-
+    try {
+        await addContribution(selectedGoal.id, {
+            date: format(data.date, 'yyyy-MM-dd'),
+            amount: data.amount,
+        });
+        await fetchData();
+    } catch (error) {
+        console.error("Failed to save contribution:", error);
+    }
     setIsContributionFormOpen(false);
     setSelectedGoal(null);
   };
@@ -124,26 +140,39 @@ export default function GoalsPage() {
     setIsHistorySheetOpen(true);
   };
 
-  const handleDeleteContribution = (goalId: number, contributionId: number) => {
+  const handleDeleteContribution = (goalId: string, contributionId: string) => {
     setContributionToDelete({ goalId, contributionId });
     setDeleteContributionAlertOpen(true);
   };
 
-  const confirmDeleteContribution = () => {
+  const confirmDeleteContribution = async () => {
     if (!contributionToDelete) return;
-
-    setGoals(currentGoals => currentGoals.map(g => {
-      if (g.id === contributionToDelete.goalId) {
-        const updatedHistory = (g.history || []).filter(h => h.id !== contributionToDelete.contributionId);
-        const updatedCurrent = updatedHistory.reduce((acc, item) => acc + item.amount, 0);
-        return { ...g, history: updatedHistory, current: updatedCurrent };
-      }
-      return g;
-    }));
-    
+    try {
+        await deleteContribution(contributionToDelete.goalId, contributionToDelete.contributionId);
+        await fetchData();
+    } catch (error) {
+        console.error("Failed to delete contribution:", error);
+    }
     setDeleteContributionAlertOpen(false);
     setContributionToDelete(null);
   };
+  
+  if (isLoading) {
+    return (
+        <div className="space-y-6">
+             <div className="flex items-center justify-between mb-6">
+                <div>
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-4 w-64 mt-2" />
+                </div>
+                <Skeleton className="h-10 w-36" />
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                 {[...Array(3)].map((_, i) => <Card key={i} className="h-48"><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-full w-full" /></CardContent></Card>)}
+            </div>
+        </div>
+    )
+  }
 
   return (
     <>
@@ -159,7 +188,7 @@ export default function GoalsPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {goals.map((goal) => {
-          const currentAmount = goal.current || (goal.history || []).reduce((acc, item) => acc + item.amount, 0);
+          const currentAmount = goal.current || 0;
           const percentage = goal.target > 0 ? (currentAmount / goal.target) * 100 : 0;
 
           return (

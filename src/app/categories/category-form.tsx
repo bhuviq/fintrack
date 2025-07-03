@@ -24,18 +24,18 @@ import {
   SheetClose,
 } from '@/components/ui/sheet';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { MOCK_DATA } from '@/lib/data';
+import type { Category } from '@/lib/types';
+
 
 const categorySchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(),
   name: z.string().min(2, {
     message: 'Category name must be at least 2 characters.',
   }),
-  type: z.enum(['expense', 'income']),
+  type: z.enum(['expense', 'income', 'investment']),
 });
 
 export type CategoryFormValues = z.infer<typeof categorySchema>;
-type Category = (typeof MOCK_DATA.categories)[0];
 
 interface CategoryFormProps {
   isOpen: boolean;
@@ -134,6 +134,12 @@ export function CategoryForm({
                           <RadioGroupItem value="income" />
                         </FormControl>
                         <FormLabel className="font-normal capitalize">Income</FormLabel>
+                      </FormItem>
+                       <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="investment" />
+                        </FormControl>
+                        <FormLabel className="font-normal capitalize">Investment</FormLabel>
                       </FormItem>
                     </RadioGroup>
                   </FormControl>

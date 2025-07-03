@@ -15,19 +15,46 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { Mail, Smartphone, ShieldCheck } from 'lucide-react';
+import { getUserProfile, updateUserProfile } from '@/services/userService';
+import type { UserProfile } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from "@/hooks/use-toast"
+
 
 export default function SettingsPage() {
-  const [avatarSrc, setAvatarSrc] = React.useState(
-    'https://placehold.co/80x80.png'
-  );
+  const { toast } = useToast();
+  const [profile, setProfile] = React.useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+        setIsLoading(true);
+        try {
+            const userProfile = await getUserProfile();
+            setProfile(userProfile);
+        } catch (error) {
+            console.error("Failed to fetch profile:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not load user profile.",
+            })
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    fetchProfile();
+  }, [toast]);
+  
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && profile) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAvatarSrc(reader.result as string);
+        setProfile({...profile, avatarUrl: reader.result as string });
       };
       reader.readAsDataURL(file);
     }
@@ -36,6 +63,66 @@ export default function SettingsPage() {
   const handleChangePhotoClick = () => {
     fileInputRef.current?.click();
   };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    if (profile) {
+        setProfile({ ...profile, [id]: value });
+    }
+  }
+
+  const handleSaveChanges = async () => {
+    if (!profile) return;
+    try {
+        await updateUserProfile({
+            firstName: profile.firstName,
+            lastName: profile.lastName,
+            phone: profile.phone,
+            avatarUrl: profile.avatarUrl,
+        });
+        toast({
+            title: "Success",
+            description: "Your profile has been updated.",
+        })
+    } catch (error) {
+        console.error("Failed to save changes:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not save profile changes.",
+        })
+    }
+  }
+
+  if(isLoading || !profile) {
+    return (
+        <div className="space-y-6">
+            <div>
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-4 w-64 mt-2" />
+            </div>
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-6 w-24" />
+                    <Skeleton className="h-4 w-48" />
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="flex items-center gap-4">
+                        <Skeleton className="h-20 w-20 rounded-full" />
+                        <Skeleton className="h-10 w-32" />
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2"><Skeleton className="h-4 w-16" /><Skeleton className="h-10 w-full" /></div>
+                        <div className="space-y-2"><Skeleton className="h-4 w-16" /><Skeleton className="h-10 w-full" /></div>
+                    </div>
+                    <div className="space-y-2"><Skeleton className="h-4 w-12" /><Skeleton className="h-10 w-full" /></div>
+                    <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                </CardContent>
+                <CardFooter className="border-t px-6 py-4"><Skeleton className="h-10 w-28" /></CardFooter>
+            </Card>
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -54,11 +141,11 @@ export default function SettingsPage() {
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
               <AvatarImage
-                src={avatarSrc}
+                src={profile.avatarUrl || `https://placehold.co/80x80.png`}
                 alt="User"
                 data-ai-hint="person avatar"
               />
-              <AvatarFallback>U</AvatarFallback>
+              <AvatarFallback>{profile.firstName?.[0] || 'U'}</AvatarFallback>
             </Avatar>
             <input
               type="file"
@@ -74,11 +161,11 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
-              <Input id="firstName" defaultValue="User" />
+              <Input id="firstName" value={profile.firstName} onChange={handleInputChange} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
-              <Input id="lastName" defaultValue="Name" />
+              <Input id="lastName" value={profile.lastName} onChange={handleInputChange} />
             </div>
           </div>
           <div className="space-y-2">
@@ -86,17 +173,17 @@ export default function SettingsPage() {
             <Input
               id="email"
               type="email"
-              defaultValue="user@fintrack.com"
+              value={profile.email}
               disabled
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
-            <Input id="phone" type="tel" placeholder="e.g. +1 234 567 890" />
+            <Input id="phone" type="tel" value={profile.phone || ''}  onChange={handleInputChange} placeholder="e.g. +1 234 567 890" />
           </div>
         </CardContent>
         <CardFooter className="border-t px-6 py-4">
-          <Button>Save Changes</Button>
+          <Button onClick={handleSaveChanges}>Save Changes</Button>
         </CardFooter>
       </Card>
 

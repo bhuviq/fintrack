@@ -30,16 +30,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MOCK_DATA } from '@/lib/data';
+import type { Budget, Category } from '@/lib/types';
 
 const budgetSchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(),
   category: z.string().min(1, { message: 'Please select a category.' }),
   total: z.coerce.number().positive({ message: 'Total must be a positive number.' }),
 });
 
 export type BudgetFormValues = z.infer<typeof budgetSchema>;
-type Budget = (typeof MOCK_DATA.budgets)[0];
 
 interface BudgetFormProps {
   isOpen: boolean;
@@ -47,6 +46,7 @@ interface BudgetFormProps {
   budget?: Budget | null;
   onSubmit: (data: BudgetFormValues) => void;
   existingCategories: string[];
+  allCategories: Category[];
 }
 
 export function BudgetForm({
@@ -55,6 +55,7 @@ export function BudgetForm({
   budget,
   onSubmit,
   existingCategories,
+  allCategories,
 }: BudgetFormProps) {
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetSchema),
@@ -65,8 +66,8 @@ export function BudgetForm({
   });
 
   const availableCategories = React.useMemo(() => {
-    return MOCK_DATA.categories.filter(c => c.type === 'expense' && (!existingCategories.includes(c.name) || budget?.category === c.name));
-  }, [existingCategories, budget]);
+    return allCategories.filter(c => c.type === 'expense' && (!existingCategories.includes(c.name) || budget?.category === c.name));
+  }, [existingCategories, budget, allCategories]);
 
   React.useEffect(() => {
     if (isOpen) {

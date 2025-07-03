@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { MOCK_DATA } from '@/lib/data';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -33,14 +32,18 @@ import { type DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-
-type Investment = (typeof MOCK_DATA.investments)[0];
-type InvestmentHistoryItem = Investment['history'][0] & { unit?: 'oz' | 'gm' };
+import { getInvestments, addInvestment, updateInvestment, deleteInvestment, addInvestmentTransaction, updateInvestmentTransaction, deleteInvestmentTransaction } from '@/services/investmentService';
+import { getCategories } from '@/services/categoryService';
+import type { Investment, InvestmentTransaction, Category, NewInvestment } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function InvestmentsPage() {
-  const [investments, setInvestments] = useState<Investment[]>(MOCK_DATA.investments);
+  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
@@ -48,16 +51,37 @@ export default function InvestmentsPage() {
   const [activeTab, setActiveTab] = useState('All');
   const [historyInvestment, setHistoryInvestment] = useState<Investment | null>(null);
   const [isTransactionSheetOpen, setIsTransactionSheetOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<{ transaction: InvestmentHistoryItem; index: number } | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<{ transaction: InvestmentTransaction; index: number } | null>(null);
   const [deleteTransactionAlertOpen, setDeleteTransactionAlertOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
 
   const [date, setDate] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
 
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const [fetchedInvestments, fetchedCategories] = await Promise.all([
+            getInvestments(),
+            getCategories(),
+        ]);
+        setInvestments(fetchedInvestments);
+        setCategories(fetchedCategories);
+    } catch (error) {
+        console.error("Failed to fetch investment data:", error);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+
   const investmentCategories = useMemo(
-    () => MOCK_DATA.categories.filter((c) => c.type === 'investment'),
-    []
+    () => categories.filter((c) => c.type === 'investment'),
+    [categories]
   );
 
   const portfolioCategories = useMemo(
@@ -123,7 +147,7 @@ export default function InvestmentsPage() {
     setIsTransactionSheetOpen(true);
   };
 
-  const handleEditTransactionHistory = (transaction: InvestmentHistoryItem, index: number) => {
+  const handleEditTransactionHistory = (transaction: InvestmentTransaction, index: number) => {
     setEditingTransaction({ transaction, index });
     setIsTransactionSheetOpen(true);
   };
@@ -133,109 +157,81 @@ export default function InvestmentsPage() {
     setDeleteTransactionAlertOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (investmentToDelete) {
-        setInvestments(investments.filter(i => i.id !== investmentToDelete.id));
+        try {
+            await deleteInvestment(investmentToDelete.id);
+            await fetchData();
+        } catch (error) {
+            console.error("Failed to delete investment:", error);
+        }
     }
     setDeleteAlertOpen(false);
     setInvestmentToDelete(null);
   }
 
-  const confirmDeleteTransaction = () => {
+  const confirmDeleteTransaction = async () => {
     if (transactionToDelete === null || !historyInvestment) return;
 
-    const updatedInvestments = investments.map(inv => {
-        if (inv.id === historyInvestment.id) {
-            const updatedHistory = inv.history.filter((_, i) => i !== transactionToDelete);
-            return { ...inv, history: updatedHistory };
-        }
-        return inv;
-    });
-    setInvestments(updatedInvestments);
-
-    const newlyUpdatedInvestment = updatedInvestments.find(inv => inv.id === historyInvestment.id);
-    setHistoryInvestment(newlyUpdatedInvestment || null);
+    try {
+        await deleteInvestmentTransaction(historyInvestment.id, transactionToDelete);
+        const updatedData = await getInvestments();
+        setInvestments(updatedData);
+        setHistoryInvestment(updatedData.find(inv => inv.id === historyInvestment.id) || null);
+    } catch (error) {
+        console.error("Failed to delete transaction:", error);
+    }
 
     setDeleteTransactionAlertOpen(false);
     setTransactionToDelete(null);
   };
 
 
-  const handleSaveInvestment = (data: InvestmentFormValues) => {
-    if (editingInvestment && data.id) {
-      const originalInvestment = investments.find((i) => i.id === data.id);
-      if (!originalInvestment) return;
-
-      const newValue = Number(data.value);
-      // "Start of day" value is the current value minus today's change.
-      const startOfDayValue =
-        originalInvestment.value - originalInvestment.changeAmount;
-
-      const newChangeAmount = newValue - startOfDayValue;
-      const newChangePercentage =
-        startOfDayValue !== 0 ? (newChangeAmount / startOfDayValue) * 100 : 0;
-
-      setInvestments(
-        investments.map((i) =>
-          i.id === data.id
-            ? {
-                ...i,
-                name: data.name,
-                category: data.category,
-                symbol: data.symbol || '',
-                value: newValue,
-                change: newChangePercentage,
-                changeAmount: newChangeAmount,
-              }
-            : i
-        )
-      );
-    } else {
-      const newInvestment: Investment = {
-        id: Math.max(0, ...investments.map((i) => i.id)) + 1,
-        name: data.name,
-        category: data.category,
-        symbol: data.symbol || '',
-        value: Number(data.value),
-        change: 0,
-        changeAmount: 0,
-        history: [], // New investments start with empty history
-      };
-      setInvestments([newInvestment, ...investments]);
+  const handleSaveInvestment = async (data: InvestmentFormValues) => {
+    try {
+        if (editingInvestment && data.id) {
+            const { id, ...investmentData} = data;
+            const originalInvestment = investments.find((i) => i.id === data.id);
+            if (!originalInvestment) return;
+            const newValue = Number(data.value);
+            const startOfDayValue = originalInvestment.value - originalInvestment.changeAmount;
+            const newChangeAmount = newValue - startOfDayValue;
+            const newChangePercentage = startOfDayValue !== 0 ? (newChangeAmount / startOfDayValue) * 100 : 0;
+            await updateInvestment(id, { ...investmentData, change: newChangePercentage, changeAmount: newChangeAmount });
+        } else {
+            await addInvestment(data as NewInvestment);
+        }
+        await fetchData();
+    } catch (error) {
+        console.error("Failed to save investment:", error);
     }
     setIsSheetOpen(false);
     setEditingInvestment(null);
   };
   
-  const handleSaveInvestmentTransaction = (data: InvestmentTransactionFormValues, index?: number) => {
+  const handleSaveInvestmentTransaction = async (data: InvestmentTransactionFormValues, index?: number) => {
     if (!historyInvestment) return;
+    try {
+        const newTransactionData = {
+            date: format(data.date, 'yyyy-MM-dd'),
+            type: data.type,
+            quantity: Number(data.quantity),
+            price: Number(data.price),
+            unit: data.unit,
+        };
 
-    const newTransactionData: InvestmentHistoryItem = {
-        date: format(data.date, 'yyyy-MM-dd'),
-        type: data.type,
-        quantity: Number(data.quantity),
-        price: Number(data.price),
-        unit: data.unit,
-    };
-
-    const updatedInvestments = investments.map(inv => {
-        if (inv.id === historyInvestment.id) {
-            const newHistory = [...inv.history];
-            if (index !== undefined) {
-                // Edit
-                newHistory[index] = newTransactionData;
-            } else {
-                // Add
-                newHistory.push(newTransactionData);
-            }
-            return { ...inv, history: newHistory as any[] };
+        if (index !== undefined) {
+            await updateInvestmentTransaction(historyInvestment.id, index, newTransactionData);
+        } else {
+            await addInvestmentTransaction(historyInvestment.id, newTransactionData);
         }
-        return inv;
-    });
-    setInvestments(updatedInvestments);
-
-    const newlyUpdatedInvestment = updatedInvestments.find(inv => inv.id === historyInvestment.id);
-    setHistoryInvestment(newlyUpdatedInvestment || null);
+        
+        const updatedData = await getInvestments();
+        setInvestments(updatedData);
+        setHistoryInvestment(updatedData.find(inv => inv.id === historyInvestment.id) || null);
+    } catch (error) {
+        console.error("Failed to save transaction:", error);
+    }
 
     setIsTransactionSheetOpen(false);
     setEditingTransaction(null);
@@ -244,13 +240,13 @@ export default function InvestmentsPage() {
   const formatQuantity = (investment: Investment) => {
     const { category, history } = investment;
 
-    if (category === 'Real Estate') {
+    if (category === 'Real Estate' || !history) {
       return 'N/A';
     }
 
     if (category === 'Gold') {
         const holdings: { [key: string]: number } = {};
-        (history as InvestmentHistoryItem[]).forEach(t => {
+        (history as InvestmentTransaction[]).forEach(t => {
             const unit = t.unit || 'oz'; // Default to oz for backward compatibility
             const currentQty = holdings[unit] || 0;
             holdings[unit] = currentQty + (t.type === 'buy' ? t.quantity : -t.quantity);
@@ -276,6 +272,26 @@ export default function InvestmentsPage() {
     
     return quantity.toLocaleString();
   };
+
+  if(isLoading) {
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <Skeleton className="h-8 w-64" />
+                    <Skeleton className="h-4 w-80 mt-2" />
+                </div>
+                <Skeleton className="h-10 w-40" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+                <Skeleton className="h-10 w-80" />
+                <Skeleton className="h-9 w-60" />
+            </div>
+            <Card><CardHeader><Skeleton className="h-6 w-48" /></CardHeader><CardContent><Skeleton className="h-24 w-full" /></CardContent></Card>
+            <Card><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent><Skeleton className="h-48 w-full" /></CardContent></Card>
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

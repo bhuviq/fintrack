@@ -30,10 +30,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MOCK_DATA } from '@/lib/data';
+import type { Investment, Category } from '@/lib/types';
+
 
 const investmentSchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(),
   name: z.string().min(2, {
     message: 'Investment name must be at least 2 characters.',
   }),
@@ -45,8 +46,7 @@ const investmentSchema = z.object({
 });
 
 export type InvestmentFormValues = z.infer<typeof investmentSchema>;
-type Investment = (typeof MOCK_DATA.investments)[0];
-type Category = (typeof MOCK_DATA.categories)[0];
+
 
 interface InvestmentFormProps {
   isOpen: boolean;

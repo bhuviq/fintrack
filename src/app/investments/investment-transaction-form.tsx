@@ -33,7 +33,8 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import type { MOCK_DATA } from '@/lib/data';
+import type { InvestmentTransaction } from '@/lib/types';
+
 import {
   Select,
   SelectContent,
@@ -57,16 +58,13 @@ const investmentTransactionSchema = z.object({
 export type InvestmentTransactionFormValues = z.infer<
   typeof investmentTransactionSchema
 >;
-type InvestmentHistoryItem = (typeof MOCK_DATA.investments)[0]['history'][0] & {
-  unit?: 'oz' | 'gm';
-};
 
 interface InvestmentTransactionFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSubmit: (data: InvestmentTransactionFormValues, index?: number) => void;
   investmentCategory?: string;
-  transaction?: InvestmentHistoryItem;
+  transaction?: InvestmentTransaction;
   transactionIndex?: number;
 }
 

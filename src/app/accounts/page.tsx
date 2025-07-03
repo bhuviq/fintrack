@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { MOCK_DATA } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -26,17 +25,40 @@ import {
 import { MoreHorizontal, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { AccountForm, type AccountFormValues } from './account-form';
 import { Progress } from '@/components/ui/progress';
-
-type Account = (typeof MOCK_DATA.accounts)[number];
-type Transaction = (typeof MOCK_DATA.allTransactions)[number];
+import { getAccounts, addAccount, updateAccount, deleteAccount } from '@/services/accountService';
+import { getTransactions, deleteTransaction } from '@/services/transactionService';
+import type { Account, Transaction, NewAccount } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AccountsPage() {
-  const [accounts, setAccounts] = React.useState<Account[]>(MOCK_DATA.accounts);
-  const [transactions, setTransactions] = React.useState<Transaction[]>(MOCK_DATA.allTransactions);
+  const [accounts, setAccounts] = React.useState<Account[]>([]);
+  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [editingAccount, setEditingAccount] = React.useState<Account | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
   const [accountToDelete, setAccountToDelete] = React.useState<Account | null>(null);
+
+  const fetchData = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const [fetchedAccounts, fetchedTransactions] = await Promise.all([
+            getAccounts(),
+            getTransactions(),
+        ]);
+        setAccounts(fetchedAccounts);
+        setTransactions(fetchedTransactions);
+    } catch (error) {
+        console.error("Failed to fetch data:", error);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const accountsWithCurrentBalance = React.useMemo(() => {
     return accounts.map(account => {
@@ -46,14 +68,11 @@ export default function AccountsPage() {
                 return t.type === 'income' ? total + t.amount : total - t.amount;
             }
             if (account.type === 'credit-card') {
-                // For credit cards, expenses increase the negative balance (debt)
-                // and income (like a payment or return) decreases it.
                 return t.type === 'expense' ? total - t.amount : total + t.amount;
             }
             return total;
         }, 0);
         
-        // The balance from MOCK_DATA acts as the opening balance.
         const currentBalance = account.balance + transactionTotal;
         return { ...account, currentBalance };
     });
@@ -78,29 +97,34 @@ export default function AccountsPage() {
     setDeleteAlertOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (accountToDelete) {
-      setAccounts(accounts.filter(acc => acc.id !== accountToDelete.id));
-      // Also delete associated transactions
-      setTransactions(transactions.filter(t => t.accountId !== accountToDelete.id));
+        try {
+            // Firestore doesn't have cascading deletes, so we manually delete associated transactions.
+            const associatedTransactions = transactions.filter(t => t.accountId === accountToDelete.id);
+            await Promise.all(associatedTransactions.map(t => deleteTransaction(t.id)));
+            
+            await deleteAccount(accountToDelete.id);
+            await fetchData();
+        } catch (error) {
+            console.error("Failed to delete account and associated transactions:", error);
+        }
     }
     setDeleteAlertOpen(false);
     setAccountToDelete(null);
   };
 
-  const handleSaveAccount = (data: AccountFormValues) => {
-    if (editingAccount && data.id) {
-        setAccounts(accounts.map((acc) => acc.id === data.id ? { ...acc, ...data, id: acc.id } as Account : acc));
-    } else {
-        const newAccount: Account = {
-            id: Math.max(0, ...accounts.map((acc) => acc.id)) + 1,
-            name: data.name,
-            type: data.type,
-            balance: data.balance,
-            limit: data.limit,
-            dueDate: data.dueDate,
-        };
-        setAccounts([newAccount, ...accounts]);
+  const handleSaveAccount = async (data: AccountFormValues) => {
+    try {
+        const { id, ...accountData } = data;
+        if (editingAccount && id) {
+            await updateAccount(id, accountData as NewAccount);
+        } else {
+            await addAccount(accountData as NewAccount);
+        }
+        await fetchData();
+    } catch (error) {
+        console.error("Failed to save account:", error);
     }
     setIsSheetOpen(false);
     setEditingAccount(null);
@@ -116,6 +140,42 @@ export default function AccountsPage() {
     if (value < 80) return 'bg-yellow-500';
     return 'bg-red-500';
   };
+
+  if (isLoading) {
+    return (
+        <div className="space-y-8">
+            <Skeleton className="h-10 w-40" />
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {[...Array(2)].map((_, i) => <Card key={i} className="h-[250px]"><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-full w-full" /></CardContent></Card>)}
+            </div>
+             <Skeleton className="h-10 w-40 mt-8" />
+             <Card>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead><Skeleton className="h-5 w-20" /></TableHead>
+                                <TableHead><Skeleton className="h-5 w-20" /></TableHead>
+                                <TableHead className="text-right"><Skeleton className="h-5 w-24 ml-auto" /></TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                             {[...Array(2)].map((_, i) => (
+                                <TableRow key={i}>
+                                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-28 ml-auto" /></TableCell>
+                                    <TableCell><MoreHorizontal className="h-4 w-4" /></TableCell>
+                                </TableRow>
+                             ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+             </Card>
+        </div>
+    )
+  }
 
   return (
     <>
@@ -144,10 +204,10 @@ export default function AccountsPage() {
                   <Card key={account.id} className="flex flex-col">
                     <CardHeader>
                       <div className="flex justify-between items-start">
-                        <CardTitle>{account.name}</CardTitle>
+                        <CardTitle className='pr-10'>{account.name}</CardTitle>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 -mt-2 -mr-2">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 -mt-2 -mr-2 flex-shrink-0">
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>

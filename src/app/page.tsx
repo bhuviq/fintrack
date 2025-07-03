@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -34,45 +35,107 @@ import {
   YAxis,
   Tooltip,
 } from 'recharts';
-import { MOCK_DATA } from '@/lib/data';
+import { getTransactions } from '@/services/transactionService';
+import { getGoals } from '@/services/goalService';
+import { getInvestments } from '@/services/investmentService';
+import { getAccounts } from '@/services/accountService';
+import type { Transaction, Goal, Investment, Account } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
-  const { recentTransactions, spending, goals, investments, accounts, allTransactions } = MOCK_DATA;
+  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [goals, setGoals] = React.useState<Goal[]>([]);
+  const [investments, setInvestments] = React.useState<Investment[]>([]);
+  const [accounts, setAccounts] = React.useState<Account[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [
+          fetchedTransactions,
+          fetchedGoals,
+          fetchedInvestments,
+          fetchedAccounts,
+        ] = await Promise.all([
+          getTransactions(),
+          getGoals(),
+          getInvestments(),
+          getAccounts(),
+        ]);
+        setTransactions(fetchedTransactions);
+        setGoals(fetchedGoals);
+        setInvestments(fetchedInvestments);
+        setAccounts(fetchedAccounts);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const summary = React.useMemo(() => {
-    const totalInvestments = investments.reduce((acc, inv) => acc + inv.value, 0);
+    const totalInvestments = investments.reduce(
+      (acc, inv) => acc + inv.value,
+      0
+    );
 
-    const accountBalances = accounts.map(account => {
-        const relevantTransactions = allTransactions.filter(t => t.accountId === account.id);
-        const transactionTotal = relevantTransactions.reduce((total, t) => {
-            if (account.type === 'bank') {
-                return t.type === 'income' ? total + t.amount : total - t.amount;
-            }
-            if (account.type === 'credit-card') {
-                return t.type === 'expense' ? total - t.amount : total + t.amount;
-            }
-            return total;
-        }, 0);
-        return { ...account, currentBalance: account.balance + transactionTotal };
+    const accountBalances = accounts.map((account) => {
+      const relevantTransactions = transactions.filter(
+        (t) => t.accountId === account.id
+      );
+      const transactionTotal = relevantTransactions.reduce((total, t) => {
+        if (account.type === 'bank') {
+          return t.type === 'income' ? total + t.amount : total - t.amount;
+        }
+        if (account.type === 'credit-card') {
+          return t.type === 'expense' ? total - t.amount : total + t.amount;
+        }
+        return total;
+      }, 0);
+      return { ...account, currentBalance: account.balance + transactionTotal };
     });
 
     const bankAccountsBalance = accountBalances
-      .filter(acc => acc.type === 'bank')
+      .filter((acc) => acc.type === 'bank')
       .reduce((acc, b) => acc + b.currentBalance, 0);
-      
+
     const creditCardDebt = accountBalances
-      .filter(acc => acc.type === 'credit-card')
+      .filter((acc) => acc.type === 'credit-card')
       .reduce((acc, cc) => acc + cc.currentBalance, 0);
 
     const netWorth = totalInvestments + bankAccountsBalance + creditCardDebt;
 
     return {
-        netWorth,
-        bankAccounts: bankAccountsBalance,
-        investments: totalInvestments,
-        creditCardDebt,
-    }
-  }, [investments, accounts, allTransactions]);
+      netWorth,
+      bankAccounts: bankAccountsBalance,
+      investments: totalInvestments,
+      creditCardDebt,
+    };
+  }, [investments, accounts, transactions]);
+
+  const spending = React.useMemo(() => {
+    const spendingByCategory: { [key: string]: number } = {};
+    transactions
+      .filter((t) => t.type === 'expense')
+      .forEach((t) => {
+        spendingByCategory[t.category] =
+          (spendingByCategory[t.category] || 0) + t.amount;
+      });
+    return Object.entries(spendingByCategory)
+      .map(([name, value]) => ({ name, value }))
+      .slice(0, 6);
+  }, [transactions]);
+  
+  const recentTransactions = React.useMemo(() => {
+    return [...transactions]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [transactions]);
+
 
   const summaryCards = [
     {
@@ -97,18 +160,49 @@ export default function DashboardPage() {
     },
   ];
 
+  if (isLoading) {
+    return (
+        <div className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                {[...Array(4)].map((_, i) => (
+                    <Card key={i}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <Skeleton className="h-4 w-[100px]" />
+                            <Skeleton className="h-6 w-6 rounded-full" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-8 w-[150px]" />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+             <div className="grid gap-6 lg:grid-cols-2">
+                <Card><CardHeader><CardTitle>Spending Overview</CardTitle></CardHeader><CardContent><Skeleton className="h-[300px] w-full" /></CardContent></Card>
+                <Card><CardHeader><CardTitle>Recent Transactions</CardTitle></CardHeader><CardContent><Skeleton className="h-[300px] w-full" /></CardContent></Card>
+            </div>
+             <Card><CardHeader><CardTitle>Financial Goals</CardTitle></CardHeader><CardContent><Skeleton className="h-[100px] w-full" /></CardContent></Card>
+        </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {summaryCards.map((card) => (
           <Card key={card.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {card.title}
+              </CardTitle>
               {card.icon}
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${card.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                $
+                {card.amount.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </div>
             </CardContent>
           </Card>
@@ -147,7 +241,11 @@ export default function DashboardPage() {
                     borderColor: 'hsl(var(--border))',
                   }}
                 />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="value"
+                  fill="hsl(var(--primary))"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

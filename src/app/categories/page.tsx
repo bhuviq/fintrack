@@ -1,21 +1,40 @@
 'use client';
 
 import * as React from 'react';
-import { MOCK_DATA } from '@/lib/data';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { CategoryForm, type CategoryFormValues } from './category-form';
+import { getCategories, addCategory, updateCategory, deleteCategory } from '@/services/categoryService';
+import type { Category, NewCategory } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-type Category = (typeof MOCK_DATA.categories)[0];
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = React.useState<Category[]>(MOCK_DATA.categories.filter(c => c.type !== 'investment'));
+  const [categories, setCategories] = React.useState<Category[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [editingCategory, setEditingCategory] = React.useState<Category | null>(null);
 
-  const categoryTypes: Category['type'][] = ['expense', 'income'];
+  const categoryTypes: Category['type'][] = ['expense', 'income', 'investment'];
+
+  const fetchData = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const fetchedCategories = await getCategories();
+        setCategories(fetchedCategories);
+    } catch (error) {
+        console.error("Failed to fetch categories:", error);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleAddCategory = () => {
     setEditingCategory(null);
@@ -27,28 +46,57 @@ export default function CategoriesPage() {
     setIsSheetOpen(true);
   };
   
-  const handleDeleteCategory = (categoryId: number) => {
-    setCategories(categories.filter(c => c.id !== categoryId));
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+        await deleteCategory(categoryId);
+        await fetchData();
+    } catch (error) {
+        console.error("Failed to delete category:", error);
+    }
   };
 
-  const handleSaveCategory = (data: CategoryFormValues) => {
-    if (editingCategory && data.id) {
-      setCategories(
-        categories.map((c) =>
-          c.id === data.id ? { ...c, ...data, id: c.id } : c
-        )
-      );
-    } else {
-      const newCategory: Category = {
-        id: Math.max(0, ...categories.map((c) => c.id)) + 1,
-        name: data.name,
-        type: data.type,
-      };
-      setCategories([newCategory, ...categories]);
+  const handleSaveCategory = async (data: CategoryFormValues) => {
+    try {
+        const { id, ...categoryData } = data;
+        if (editingCategory && id) {
+            await updateCategory(id, categoryData as NewCategory);
+        } else {
+            await addCategory(categoryData as NewCategory);
+        }
+        await fetchData();
+    } catch (error) {
+        console.error("Failed to save category:", error);
     }
+
     setIsSheetOpen(false);
     setEditingCategory(null);
   };
+
+  if (isLoading) {
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-4 w-64 mt-2" />
+                </div>
+                <Skeleton className="h-10 w-36" />
+            </div>
+            <Card>
+                <CardContent className="p-0">
+                    <div className="p-4 border-b">
+                        <Skeleton className="h-10 w-64" />
+                    </div>
+                    <div className="p-4">
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full mt-2" />
+                        <Skeleton className="h-12 w-full mt-2" />
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    )
+  }
   
   return (
     <>
@@ -68,8 +116,8 @@ export default function CategoriesPage() {
       <Card>
         <CardContent className="p-0">
           <Tabs defaultValue="expense">
-            <div className="p-4 border-b">
-              <TabsList>
+            <div className="border-b">
+              <TabsList className="p-4">
                 {categoryTypes.map((type) => (
                   <TabsTrigger key={type} value={type} className="capitalize">
                     {type}
@@ -79,23 +127,29 @@ export default function CategoriesPage() {
             </div>
             {categoryTypes.map((type) => (
               <TabsContent key={type} value={type} className="m-0">
-                <ul className="divide-y">
-                  {categories.filter(c => c.type === type).map((category) => (
-                    <li key={category.id} className="flex items-center justify-between p-4 hover:bg-muted/50">
-                      <span className="font-medium">{category.name}</span>
-                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
-                          <Edit className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                {categories.filter(c => c.type === type).length > 0 ? (
+                  <ul className="divide-y">
+                    {categories.filter(c => c.type === type).map((category) => (
+                      <li key={category.id} className="flex items-center justify-between p-4 hover:bg-muted/50">
+                        <span className="font-medium">{category.name}</span>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Edit</span>
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                    <div className="text-center p-8 text-muted-foreground">
+                        No {type} categories yet.
+                    </div>
+                )}
               </TabsContent>
             ))}
           </Tabs>

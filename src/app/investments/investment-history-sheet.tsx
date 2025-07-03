@@ -17,7 +17,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { MOCK_DATA } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Edit, MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
 import {
@@ -27,16 +26,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import type { Investment, InvestmentTransaction } from '@/lib/types';
 
-type Investment = (typeof MOCK_DATA.investments)[0];
-type InvestmentHistoryItem = Investment['history'][0] & { unit?: 'oz' | 'gm' };
 
 interface InvestmentHistorySheetProps {
   investment: Investment | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onAddTransaction: () => void;
-  onEditTransaction: (transaction: InvestmentHistoryItem, index: number) => void;
+  onEditTransaction: (transaction: InvestmentTransaction, index: number) => void;
   onDeleteTransaction: (index: number) => void;
 }
 
@@ -57,7 +55,7 @@ export function InvestmentHistorySheet({
 
     if (category === 'Gold') {
         const holdings: { [key: string]: number } = {};
-        (history as InvestmentHistoryItem[]).forEach(t => {
+        (history as InvestmentTransaction[]).forEach(t => {
             const unit = t.unit || 'oz';
             holdings[unit] = (holdings[unit] || 0) + (t.type === 'buy' ? t.quantity : -t.quantity);
         });
@@ -121,7 +119,7 @@ export function InvestmentHistorySheet({
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {item.quantity.toLocaleString()}
-                    {(item as InvestmentHistoryItem).unit ? ` ${(item as InvestmentHistoryItem).unit}` : ''}
+                    {(item as InvestmentTransaction).unit ? ` ${(item as InvestmentTransaction).unit}` : ''}
                   </TableCell>
                   <TableCell className="text-right font-medium">${item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell className="text-right font-medium">${(item.quantity * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
@@ -133,7 +131,7 @@ export function InvestmentHistorySheet({
                               </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                              <DropdownMenuItem onClick={() => onEditTransaction(item as InvestmentHistoryItem, index)}>
+                              <DropdownMenuItem onClick={() => onEditTransaction(item as InvestmentTransaction, index)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit
                               </DropdownMenuItem>

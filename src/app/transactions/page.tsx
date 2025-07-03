@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { MOCK_DATA } from '@/lib/data';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
@@ -45,22 +44,51 @@ import { type DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { getTransactions, addTransaction, updateTransaction, deleteTransaction } from '@/services/transactionService';
+import { getAccounts } from '@/services/accountService';
+import { getCategories } from '@/services/categoryService';
+import type { Transaction, Account, Category, NewTransaction } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-type Transaction = (typeof MOCK_DATA.allTransactions)[0];
 
 const ITEMS_PER_PAGE = 10;
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>(
-    MOCK_DATA.allTransactions
-  );
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] =
-    useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   const [date, setDate] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const [fetchedTransactions, fetchedAccounts, fetchedCategories] = await Promise.all([
+            getTransactions(),
+            getAccounts(),
+            getCategories(),
+        ]);
+        setTransactions(fetchedTransactions);
+        setAccounts(fetchedAccounts);
+        setCategories(fetchedCategories);
+    } catch(error) {
+        console.error("Failed to fetch data:", error);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+  
+  const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc.name])), [accounts]);
 
   const filteredTransactions = useMemo(() => {
     let items = [...transactions];
@@ -96,44 +124,75 @@ export default function TransactionsPage() {
     setDeleteAlertOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (transactionToDelete) {
-      setTransactions(transactions.filter(t => t.id !== transactionToDelete.id));
+        try {
+            await deleteTransaction(transactionToDelete.id);
+            await fetchData();
+        } catch (error) {
+            console.error("Failed to delete transaction:", error);
+        }
     }
     setDeleteAlertOpen(false);
     setTransactionToDelete(null);
   };
 
 
-  const handleSaveTransaction = (data: TransactionFormValues) => {
-    if (editingTransaction && data.id) {
-      setTransactions(
-        transactions.map((t) =>
-          t.id === data.id
-            ? ({
-                ...t,
-                ...data,
-                date: format(data.date, 'yyyy-MM-dd'),
-                amount: Number(data.amount),
-              } as Transaction)
-            : t
-        )
-      );
-    } else {
-      const newTransaction: Transaction = {
-        id: Math.max(0, ...transactions.map((t) => t.id)) + 1,
-        description: data.description,
-        amount: Number(data.amount),
-        type: data.type,
-        date: format(data.date, 'yyyy-MM-dd'),
-        category: data.category,
-        accountId: data.accountId,
-      };
-      setTransactions([newTransaction, ...transactions]);
+  const handleSaveTransaction = async (data: TransactionFormValues) => {
+    try {
+        const { id, ...transactionData} = data;
+        const newTransaction = {
+            ...transactionData,
+            date: format(data.date, 'yyyy-MM-dd'),
+            amount: Number(data.amount),
+        };
+        if (editingTransaction && id) {
+            await updateTransaction(id, newTransaction);
+        } else {
+            await addTransaction(newTransaction as NewTransaction);
+        }
+        await fetchData();
+    } catch (error) {
+        console.error("Failed to save transaction:", error);
     }
     setIsSheetOpen(false);
     setEditingTransaction(null);
   };
+  
+  if (isLoading) {
+    return (
+        <div className="space-y-6">
+             <div className="flex items-center justify-between mb-6">
+                <div>
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-4 w-64 mt-2" />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Skeleton className="h-9 w-60" />
+                    <Skeleton className="h-10 w-40" />
+                </div>
+            </div>
+            <Card>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                {[...Array(6)].map((_, i) => <TableHead key={i}><Skeleton className="h-5 w-24" /></TableHead>)}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {[...Array(5)].map((_, i) => (
+                                <TableRow key={i}>
+                                    {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
+    )
+  }
 
   return (
     <>
@@ -203,11 +262,7 @@ export default function TransactionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedTransactions.map((transaction) => {
-                const account = MOCK_DATA.accounts.find(
-                  (a) => a.id === transaction.accountId
-                );
-                return (
+              {paginatedTransactions.map((transaction) => (
                 <TableRow key={transaction.id}>
                   <TableCell className="text-muted-foreground">
                     {format(new Date(transaction.date), 'MMM d, yyyy')}
@@ -233,7 +288,7 @@ export default function TransactionsPage() {
                     </div>
                   </TableCell>
                    <TableCell>
-                    <Badge variant="secondary">{account?.name || 'N/A'}</Badge>
+                    <Badge variant="secondary">{accountMap.get(transaction.accountId) || 'N/A'}</Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{transaction.category}</Badge>
@@ -274,7 +329,7 @@ export default function TransactionsPage() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              )})}
+              ))}
             </TableBody>
           </Table>
           {totalPages > 1 && (
@@ -310,6 +365,8 @@ export default function TransactionsPage() {
         onOpenChange={setIsSheetOpen}
         transaction={editingTransaction}
         onSubmit={handleSaveTransaction}
+        accounts={accounts}
+        categories={categories}
       />
       
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>

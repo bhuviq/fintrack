@@ -40,10 +40,11 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { MOCK_DATA } from '@/lib/data';
+import type { Transaction, Account, Category } from '@/lib/types';
+
 
 const transactionSchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(),
   description: z.string().min(2, {
     message: 'Description must be at least 2 characters.',
   }),
@@ -53,17 +54,19 @@ const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
   date: z.date(),
   category: z.string().min(1, { message: 'Please select a category.' }),
-  accountId: z.coerce.number({ required_error: 'Please select an account.' }).min(1, { message: 'Please select an account.'}),
+  accountId: z.string({ required_error: 'Please select an account.' }).min(1, { message: 'Please select an account.'}),
 });
 
 export type TransactionFormValues = z.infer<typeof transactionSchema>;
-type Transaction = (typeof MOCK_DATA.allTransactions)[0];
+
 
 interface TransactionFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   transaction?: Transaction | null;
   onSubmit: (data: TransactionFormValues) => void;
+  accounts: Account[];
+  categories: Category[];
 }
 
 export function TransactionForm({
@@ -71,6 +74,8 @@ export function TransactionForm({
   onOpenChange,
   transaction,
   onSubmit,
+  accounts,
+  categories,
 }: TransactionFormProps) {
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -88,15 +93,15 @@ export function TransactionForm({
 
   const availableAccounts = React.useMemo(() => {
     if (transactionType === 'income') {
-      return MOCK_DATA.accounts.filter((acc) => acc.type === 'bank');
+      return accounts.filter((acc) => acc.type === 'bank');
     }
-    return MOCK_DATA.accounts;
-  }, [transactionType]);
+    return accounts;
+  }, [transactionType, accounts]);
 
 
   const availableCategories = React.useMemo(
-    () => MOCK_DATA.categories.filter((c) => c.type === transactionType),
-    [transactionType]
+    () => categories.filter((c) => c.type === transactionType),
+    [transactionType, categories]
   );
   
   React.useEffect(() => {

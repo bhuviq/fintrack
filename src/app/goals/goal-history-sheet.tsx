@@ -19,15 +19,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-import type { MOCK_DATA } from '@/lib/data';
+import type { Goal } from '@/lib/types';
 
-type Goal = (typeof MOCK_DATA.goals)[number];
 
 interface GoalHistorySheetProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   goal: Goal | null;
-  onDeleteContribution: (goalId: number, contributionId: number) => void;
+  onDeleteContribution: (goalId: string, contributionId: string) => void;
 }
 
 export function GoalHistorySheet({

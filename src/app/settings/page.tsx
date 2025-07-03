@@ -25,6 +25,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { TwoFactorForm } from './two-factor-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { CropImageDialog } from './crop-image-dialog';
 
 
 export default function SettingsPage() {
@@ -36,6 +37,7 @@ export default function SettingsPage() {
   const router = useRouter();
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [cropImageSrc, setCropImageSrc] = React.useState<string | null>(null);
 
   const fetchProfile = React.useCallback(async () => {
     setIsLoading(true);
@@ -69,12 +71,13 @@ export default function SettingsPage() {
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && profile) {
+    if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfile({...profile, avatarUrl: reader.result as string });
+      reader.onload = () => {
+        setCropImageSrc(reader.result as string);
       };
       reader.readAsDataURL(file);
+      event.target.value = '';
     }
   };
 
@@ -140,6 +143,13 @@ export default function SettingsPage() {
         })
     }
     setDisable2faAlertOpen(false);
+  };
+
+  const handleCroppedImage = (croppedImageUrl: string) => {
+    if (profile) {
+      setProfile({ ...profile, avatarUrl: croppedImageUrl });
+    }
+    setCropImageSrc(null); // This closes the dialog
   };
 
 
@@ -278,6 +288,13 @@ export default function SettingsPage() {
         onOpenChange={setIs2faFormOpen}
         userProfile={profile}
         onSuccess={fetchProfile}
+      />
+
+      <CropImageDialog
+        isOpen={!!cropImageSrc}
+        onOpenChange={(isOpen) => !isOpen && setCropImageSrc(null)}
+        imageSrc={cropImageSrc}
+        onCropComplete={handleCroppedImage}
       />
 
       <AlertDialog open={disable2faAlertOpen} onOpenChange={setDisable2faAlertOpen}>

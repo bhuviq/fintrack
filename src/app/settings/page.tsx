@@ -90,7 +90,6 @@ export default function SettingsPage() {
         await updateUserProfile({
             firstName: profile.firstName,
             lastName: profile.lastName,
-            phone: profile.phone,
             avatarUrl: profile.avatarUrl,
         });
         toast({
@@ -189,10 +188,6 @@ export default function SettingsPage() {
               value={profile.email}
               disabled
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
-            <Input id="phone" type="tel" value={profile.phone || ''}  onChange={handleInputChange} placeholder="e.g. +1 234 567 890" />
           </div>
         </CardContent>
         <CardFooter className="border-t px-6 py-4">

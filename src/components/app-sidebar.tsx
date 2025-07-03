@@ -112,7 +112,7 @@ export function AppSidebar() {
           </Avatar>
           <div className="flex-1 overflow-hidden">
             <p className="text-sm font-semibold truncate">{userProfile?.firstName} {userProfile?.lastName}</p>
-            <p className="text-xs text-muted-foreground truncate">{userProfile?.email || userProfile?.phone || 'No contact info'}</p>
+            <p className="text-xs text-muted-foreground truncate">{userProfile?.email || 'No contact info'}</p>
           </div>
           <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />

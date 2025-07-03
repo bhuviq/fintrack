@@ -5,10 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
   onAuthStateChanged,
-  type ConfirmationResult,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -17,12 +14,9 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Wallet, AlertTriangle } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -56,25 +50,15 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-
 export default function LoginPage() {
   const isFirebaseConfigured =
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
     !process.env.NEXT_PUBLIC_FIREBASE_API_KEY.includes('YOUR_');
 
-  const [step, setStep] = React.useState<'credentials' | 'otp'>('credentials');
-  const [phoneNumber, setPhoneNumber] = React.useState('');
-  const [otp, setOtp] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSigningIn, setIsSigningIn] = React.useState(false);
-  const [confirmationResult, setConfirmationResult] =
-    React.useState<ConfirmationResult | null>(null);
   const router = useRouter();
   const { toast } = useToast();
-
-  const recaptchaVerifierRef = React.useRef<RecaptchaVerifier | null>(null);
-  const recaptchaContainerRef = React.useRef<HTMLDivElement>(null);
-
 
   React.useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -91,31 +75,6 @@ export default function LoginPage() {
     });
     return () => unsubscribe();
   }, [router, isFirebaseConfigured]);
-
-  React.useEffect(() => {
-    if (!isFirebaseConfigured || typeof window === 'undefined') {
-      return;
-    }
-    
-    if (recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
-        try {
-            recaptchaVerifierRef.current = new RecaptchaVerifier(
-                auth,
-                recaptchaContainerRef.current,
-                {
-                  size: 'invisible',
-                }
-            );
-        } catch (error) {
-            console.error("Error initializing RecaptchaVerifier", error);
-            toast({
-                variant: "destructive",
-                title: "reCAPTCHA Error",
-                description: "Failed to initialize reCAPTCHA. Please refresh the page.",
-            });
-        }
-    }
-  });
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
@@ -151,7 +110,8 @@ export default function LoginPage() {
         console.error('Google Sign-In Error:', error);
         let description = error.message;
         if (error.code === 'auth/unauthorized-domain') {
-          description = "This domain is not authorized for authentication. Please add it to your Firebase project's authorized domains.";
+          description =
+            "This domain is not authorized for authentication. Please add it to your Firebase project's authorized domains.";
         }
         toast({
           variant: 'destructive',
@@ -159,74 +119,6 @@ export default function LoginPage() {
           description: description,
         });
       }
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
-
-  const handlePhoneSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phoneNumber.match(/^\+[1-9]\d{1,14}$/)) {
-      toast({
-        variant: 'destructive',
-        title: 'Invalid Phone Number',
-        description:
-          'Please enter the number in E.164 format (e.g., +1234567890).',
-      });
-      return;
-    }
-    setIsSigningIn(true);
-
-    if (!recaptchaVerifierRef.current) {
-        toast({
-            variant: "destructive",
-            title: "reCAPTCHA Error",
-            description: "reCAPTCHA not ready. Please try again.",
-        });
-        setIsSigningIn(false);
-        return;
-    }
-
-    try {
-      const appVerifier = recaptchaVerifierRef.current;
-      const confirmation = await signInWithPhoneNumber(
-        auth,
-        phoneNumber,
-        appVerifier
-      );
-      setConfirmationResult(confirmation);
-      setStep('otp');
-    } catch (error: any) {
-      console.error('Phone Sign-In Error:', error);
-      let description = 'Could not send OTP. Please check the phone number or try again later.';
-      if (error.code === 'auth/unauthorized-domain') {
-        description = "This domain is not authorized for authentication. Please add it to your Firebase project's authorized domains.";
-      }
-      toast({
-        variant: 'destructive',
-        title: 'SMS Sending Failed',
-        description: description,
-      });
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!confirmationResult) return;
-    setIsSigningIn(true);
-    try {
-      await confirmationResult.confirm(otp);
-      // Phone sign-in doesn't provide user details, a default profile will be created by the service if needed.
-      router.push('/');
-    } catch (error: any) {
-      console.error('OTP Verification Error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Invalid OTP',
-        description: 'The code you entered is incorrect. Please try again.',
-      });
     } finally {
       setIsSigningIn(false);
     }
@@ -262,104 +154,27 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-start justify-center bg-background p-4 pt-20 sm:pt-32">
-      <div ref={recaptchaContainerRef} id="recaptcha-container"></div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Wallet className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">
-            {step === 'credentials'
-              ? 'Welcome to FinTrack'
-              : 'Check your phone'}
-          </CardTitle>
+          <CardTitle className="text-2xl">Welcome to FinTrack</CardTitle>
           <CardDescription>
-            {step === 'credentials'
-              ? 'Sign in to manage your finances.'
-              : `We've sent a one-time password to ${phoneNumber}.`}
+            Sign in or create an account with Google to manage your finances.
           </CardDescription>
         </CardHeader>
-
-        {step === 'credentials' ? (
-          <>
-            <CardContent className="space-y-4 pt-6">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleGoogleSignIn}
-                disabled={isSigningIn}
-              >
-                <GoogleIcon className="mr-2" />
-                Sign in with Google
-              </Button>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-              <form onSubmit={handlePhoneSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+1 234 567 890"
-                    required
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    disabled={isSigningIn}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isSigningIn}>
-                  Send OTP
-                </Button>
-              </form>
-            </CardContent>
-          </>
-        ) : (
-          <form onSubmit={handleVerifyOtp}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="otp">One-Time Password</Label>
-                <Input
-                  id="otp"
-                  type="text"
-                  required
-                  placeholder="_ _ _ _ _ _"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  disabled={isSigningIn}
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="flex-col gap-4">
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isSigningIn}
-              >
-                Verify & Continue
-              </Button>
-              <Button
-                variant="link"
-                size="sm"
-                type="button"
-                onClick={() => {
-                  setStep('credentials');
-                  setOtp('');
-                }}
-                disabled={isSigningIn}
-              >
-                Go Back
-              </Button>
-            </CardFooter>
-          </form>
-        )}
+        <CardContent className="pt-6">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleGoogleSignIn}
+            disabled={isSigningIn}
+          >
+            <GoogleIcon className="mr-2" />
+            Continue with Google
+          </Button>
+        </CardContent>
       </Card>
     </div>
   );

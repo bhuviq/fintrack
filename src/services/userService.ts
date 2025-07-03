@@ -33,7 +33,6 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
             firstName: 'New',
             lastName: 'User',
             email: currentUser.email || undefined,
-            phone: currentUser.phoneNumber || undefined,
             avatarUrl: currentUser.photoURL || undefined
         };
         await setDoc(userDocRef, defaultProfile, { merge: true });

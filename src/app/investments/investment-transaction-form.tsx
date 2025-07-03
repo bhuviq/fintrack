@@ -86,13 +86,7 @@ export function InvestmentTransactionForm({
       unit: undefined,
     },
   });
-
-  React.useEffect(() => {
-    if (investmentCategory === 'Real Estate') {
-      form.setValue('quantity', 1);
-    }
-  }, [investmentCategory, form]);
-
+  
   React.useEffect(() => {
     if (isOpen) {
       if (transaction) {
@@ -223,6 +217,7 @@ export function InvestmentTransactionForm({
                         <Input
                           type="number"
                           placeholder="e.g. 1.5"
+                          step="any"
                           {...field}
                           value={field.value ?? ''}
                         />
@@ -267,7 +262,8 @@ export function InvestmentTransactionForm({
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="e.g. 10"
+                        placeholder={investmentCategory === 'Mutual Funds' ? "e.g. 10.525" : "e.g. 100"}
+                        step="any"
                         {...field}
                         value={field.value ?? ''}
                       />
@@ -287,6 +283,7 @@ export function InvestmentTransactionForm({
                     <Input
                       type="number"
                       placeholder="e.g. 150.75"
+                      step="any"
                       {...field}
                       value={field.value ?? ''}
                     />

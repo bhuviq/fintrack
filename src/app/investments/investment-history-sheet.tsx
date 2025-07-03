@@ -52,6 +52,10 @@ export function InvestmentHistorySheet({
 
   const renderTotalHoldings = (investment: Investment) => {
     const { category, history } = investment;
+    
+    if (!history || history.length === 0) {
+        return "No holdings yet."
+    }
 
     if (category === 'Gold') {
         const holdings: { [key: string]: number } = {};
@@ -68,11 +72,20 @@ export function InvestmentHistorySheet({
         return `Total Holdings: ${formattedHoldings.length > 0 ? formattedHoldings : '0'}`;
     }
 
+    if (category === 'Real Estate') {
+        const totalProperties = history.reduce((acc, item) => acc + (item.type === 'buy' ? 1 : -1), 0);
+        return `Total Holdings: ${totalProperties} propert${totalProperties === 1 ? 'y' : 'ies'}`;
+    }
+
     const totalQuantity = history.reduce((acc, item) => {
         return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
     }, 0);
+    
+    const quantityFormatting: Intl.NumberFormatOptions = (category === "Mutual Funds")
+        ? { minimumFractionDigits: 2, maximumFractionDigits: 4 }
+        : { minimumFractionDigits: 0, maximumFractionDigits: 2 }
 
-    return `Total Quantity: ${totalQuantity.toLocaleString()}`;
+    return `Total Quantity: ${totalQuantity.toLocaleString(undefined, quantityFormatting)}`;
   };
 
   return (

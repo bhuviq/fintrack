@@ -259,8 +259,13 @@ export default function InvestmentsPage() {
   const formatQuantity = (investment: Investment) => {
     const { category, history } = investment;
 
-    if (category === 'Real Estate' || !history) {
-      return 'N/A';
+    if (!history || history.length === 0) {
+      return '0';
+    }
+
+    if (category === 'Real Estate') {
+      const quantity = history.reduce((acc, item) => acc + (item.type === 'buy' ? 1 : -1), 0);
+      return quantity.toString();
     }
 
     if (category === 'Gold') {
@@ -289,7 +294,10 @@ export default function InvestmentsPage() {
         });
     }
     
-    return quantity.toLocaleString();
+    return quantity.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    });
   };
 
   if(isLoading) {

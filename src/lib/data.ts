@@ -6,10 +6,10 @@ export const MOCK_DATA = {
     creditCardDebt: -2000,
   },
   accounts: [
-    { id: 1, name: 'Chase Checking', type: 'bank', balance: 25120.75 },
-    { id: 2, name: 'Bank of America Savings', type: 'bank', balance: 30113.37 },
-    { id: 3, name: 'Amex Gold Card', type: 'credit-card', balance: -1500.00 },
-    { id: 4, name: 'Chase Sapphire Reserve', type: 'credit-card', balance: -500.00 },
+    { id: 1, name: 'Chase Checking', type: 'bank' as const, balance: 25120.75 },
+    { id: 2, name: 'Bank of America Savings', type: 'bank' as const, balance: 30113.37 },
+    { id: 3, name: 'Amex Gold Card', type: 'credit-card' as const, balance: -1500.00, limit: 10000, dueDate: 15 },
+    { id: 4, name: 'Chase Sapphire Reserve', type: 'credit-card' as const, balance: -500.00, limit: 25000, dueDate: 20 },
   ],
   recentTransactions: [
     {

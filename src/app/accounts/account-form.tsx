@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { MOCK_DATA } from '@/lib/data';
 
 const accountSchema = z.object({
   id: z.number().optional(),
@@ -38,15 +39,13 @@ const accountSchema = z.object({
   }),
   type: z.enum(['bank', 'credit-card']),
   balance: z.coerce.number(),
+  limit: z.coerce.number().positive().optional(),
+  dueDate: z.coerce.number().min(1).max(31).optional(),
 });
 
 export type AccountFormValues = z.infer<typeof accountSchema>;
-type Account = {
-    id: number;
-    name: string;
-    type: 'bank' | 'credit-card';
-    balance: number;
-}
+type Account = (typeof MOCK_DATA.accounts)[number];
+
 
 interface AccountFormProps {
   isOpen: boolean;
@@ -67,8 +66,12 @@ export function AccountForm({
       name: '',
       type: 'bank',
       balance: 0,
+      limit: undefined,
+      dueDate: undefined,
     },
   });
+
+  const accountType = form.watch('type');
 
   React.useEffect(() => {
     if (isOpen) {
@@ -78,12 +81,16 @@ export function AccountForm({
           name: account.name,
           type: account.type,
           balance: account.type === 'credit-card' ? Math.abs(account.balance) : account.balance,
+          limit: account.type === 'credit-card' ? account.limit : undefined,
+          dueDate: account.type === 'credit-card' ? account.dueDate : undefined,
         });
       } else {
         form.reset({
           name: '',
           type: 'bank',
           balance: undefined,
+          limit: undefined,
+          dueDate: undefined,
         });
       }
     }
@@ -159,11 +166,11 @@ export function AccountForm({
               name="balance"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Current Balance</FormLabel>
+                  <FormLabel>{accountType === 'credit-card' ? 'Current Outstanding' : 'Current Balance'}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
-                      placeholder="e.g. 5000.00"
+                      placeholder={accountType === 'credit-card' ? "e.g. 1500.00" : "e.g. 5000.00"}
                       {...field}
                       value={field.value ?? ''}
                     />
@@ -172,6 +179,48 @@ export function AccountForm({
                 </FormItem>
               )}
             />
+            {accountType === 'credit-card' && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="limit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Credit Limit</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 10000"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Payment Due Day (1-31)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 15"
+                          {...field}
+                          value={field.value ?? ''}
+                          min={1}
+                          max={31}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
             <SheetFooter>
               <SheetClose asChild>
                 <Button type="button" variant="outline">

@@ -145,10 +145,14 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       console.error('Google Sign-In Error:', error);
+      let description = error.message;
+      if (error.code === 'auth/unauthorized-domain') {
+        description = "This domain is not authorized for authentication. Please add it to your Firebase project's authorized domains.";
+      }
       toast({
         variant: 'destructive',
         title: 'Sign-In Failed',
-        description: error.message,
+        description: description,
       });
     } finally {
       setIsSigningIn(false);
@@ -189,11 +193,14 @@ export default function LoginPage() {
       setStep('otp');
     } catch (error: any) {
       console.error('Phone Sign-In Error:', error);
+      let description = 'Could not send OTP. Please check the phone number or try again later.';
+      if (error.code === 'auth/unauthorized-domain') {
+        description = "This domain is not authorized for authentication. Please add it to your Firebase project's authorized domains.";
+      }
       toast({
         variant: 'destructive',
         title: 'SMS Sending Failed',
-        description:
-          'Could not send OTP. Please check the phone number or try again later.',
+        description: description,
       });
     } finally {
       setIsSigningIn(false);

@@ -82,14 +82,20 @@ export default function AccountsPage() {
 
   const accountsWithCurrentBalance = React.useMemo(() => {
     return accounts.map(account => {
-        const relevantTransactions = transactions.filter(t => t.accountId === account.id);
-        const transactionTotal = relevantTransactions.reduce((total, t) => {
-            if (account.type === 'bank') {
-                return t.type === 'income' ? total + t.amount : total - t.amount;
+        const transactionTotal = transactions.reduce((total, t) => {
+            // Credits to the account (money in)
+            if (t.accountId === account.id && t.type === 'income') {
+                return total + t.amount;
             }
-            if (account.type === 'credit-card') {
-                return t.type === 'expense' ? total - t.amount : total + t.amount;
+            if (t.toAccountId === account.id && t.type === 'transfer') {
+                 return total + t.amount;
             }
+
+            // Debits from the account (money out)
+            if (t.accountId === account.id && (t.type === 'expense' || t.type === 'transfer')) {
+                return total - t.amount;
+            }
+            
             return total;
         }, 0);
         

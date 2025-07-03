@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -51,11 +52,37 @@ const transactionSchema = z.object({
   amount: z.coerce
     .number()
     .positive({ message: 'Amount must be a positive number.' }),
-  type: z.enum(['income', 'expense']),
+  type: z.enum(['income', 'expense', 'transfer']),
   date: z.date(),
-  category: z.string().min(1, { message: 'Please select a category.' }),
+  category: z.string().optional(),
   accountId: z.string({ required_error: 'Please select an account.' }).min(1, { message: 'Please select an account.'}),
+  toAccountId: z.string().optional(),
+}).refine(data => {
+    if (data.type === 'transfer') {
+        return !!data.toAccountId && data.toAccountId.length > 0;
+    }
+    return true;
+}, {
+    message: "Please select a destination account for the transfer.",
+    path: ["toAccountId"],
+}).refine(data => {
+    if (data.type === 'transfer') {
+        return data.accountId !== data.toAccountId;
+    }
+    return true;
+}, {
+    message: "From and To accounts cannot be the same.",
+    path: ["toAccountId"],
+}).refine(data => {
+    if (data.type !== 'transfer') {
+        return !!data.category && data.category.length > 0;
+    }
+    return true;
+}, {
+    message: "Please select a category.",
+    path: ["category"],
 });
+
 
 export type TransactionFormValues = z.infer<typeof transactionSchema>;
 
@@ -86,21 +113,17 @@ export function TransactionForm({
       date: new Date(),
       category: '',
       accountId: '',
+      toAccountId: '',
     },
   });
 
   const transactionType = form.watch('type');
 
-  const availableAccounts = React.useMemo(() => {
-    if (transactionType === 'income') {
-      return accounts.filter((acc) => acc.type === 'bank');
-    }
-    return accounts;
-  }, [transactionType, accounts]);
-
+  const fromAccounts = accounts;
+  const toAccounts = accounts;
 
   const availableCategories = React.useMemo(
-    () => categories.filter((c) => c.type === transactionType),
+    () => categories.filter((c) => c.type === transactionType && c.type !== 'investment'),
     [transactionType, categories]
   );
   
@@ -115,6 +138,7 @@ export function TransactionForm({
           date: new Date(transaction.date),
           category: transaction.category,
           accountId: transaction.accountId,
+          toAccountId: transaction.toAccountId,
         });
       } else {
         form.reset({
@@ -124,29 +148,27 @@ export function TransactionForm({
           date: new Date(),
           category: '',
           accountId: '',
+          toAccountId: '',
         });
       }
     }
   }, [transaction, form, isOpen]);
 
   React.useEffect(() => {
-    // When the transaction type changes, reset the category field
-    // as the available categories have changed.
     form.setValue('category', '');
-
-    // Also reset account if it's not valid for the new type
-    const currentAccountId = form.getValues('accountId');
-    if (currentAccountId) {
-        const accountIsValid = availableAccounts.some(acc => acc.id === currentAccountId);
-        if (!accountIsValid) {
-            form.setValue('accountId', '', { shouldValidate: true });
-        }
-    }
-  }, [transactionType, form, availableAccounts]);
+  }, [transactionType, form]);
 
 
   const handleSubmit = (values: TransactionFormValues) => {
-    onSubmit({ ...values, id: transaction?.id });
+    const submissionData = { ...values };
+
+    if (submissionData.type === 'transfer') {
+      submissionData.category = 'Transfer';
+    } else {
+      delete submissionData.toAccountId;
+    }
+
+    onSubmit({ ...submissionData, id: transaction?.id } as TransactionFormValues);
     onOpenChange(false);
   };
 
@@ -192,6 +214,12 @@ export function TransactionForm({
                         </FormControl>
                         <FormLabel className="font-normal">Income</FormLabel>
                       </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="transfer" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Transfer</FormLabel>
+                      </FormItem>
                     </RadioGroup>
                   </FormControl>
                   <FormMessage />
@@ -199,33 +227,86 @@ export function TransactionForm({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="accountId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Account</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an account" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {availableAccounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {transactionType === 'transfer' ? (
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="accountId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>From Account</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select account" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {fromAccounts.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>
+                                {account.name}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="toAccountId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>To Account</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select account" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {toAccounts.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>
+                                {account.name}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+            ) : (
+                <FormField
+                    control={form.control}
+                    name="accountId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Account</FormLabel>
+                        <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                        >
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select an account" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {accounts.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>
+                                {account.name}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            )}
             
             <FormField
               control={form.control}
@@ -300,33 +381,35 @@ export function TransactionForm({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {availableCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.name}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {transactionType !== 'transfer' && (
+                <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                    >
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {availableCategories.map((category) => (
+                            <SelectItem key={category.id} value={category.name}>
+                            {category.name}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            )}
             <SheetFooter>
               <SheetClose asChild>
                 <Button type="button" variant="outline">

@@ -33,6 +33,7 @@ import {
 import {
   ArrowUpRight,
   ArrowDownLeft,
+  ArrowLeftRight,
   MoreHorizontal,
   PlusCircle,
   Trash2,
@@ -292,8 +293,41 @@ export default function TransactionsPage() {
             </TableHeader>
             <TableBody>
               {paginatedTransactions.map((transaction) => {
-                const account = accountMap.get(transaction.accountId);
-                const currency = account ? account.currency : globalCurrency;
+                const fromAccount = accountMap.get(transaction.accountId);
+                const toAccount = transaction.toAccountId ? accountMap.get(transaction.toAccountId) : null;
+                const currency = fromAccount ? fromAccount.currency : globalCurrency;
+
+                const getIcon = () => {
+                    switch (transaction.type) {
+                        case 'income':
+                            return (
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 dark:bg-green-900">
+                                    <ArrowUpRight className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                </div>
+                            );
+                        case 'expense':
+                             return (
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-red-100 dark:bg-red-900">
+                                    <ArrowDownLeft className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                </div>
+                            );
+                        case 'transfer':
+                            return (
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900">
+                                    <ArrowLeftRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                </div>
+                            );
+                    }
+                }
+
+                const getAmountColor = () => {
+                     switch (transaction.type) {
+                        case 'income': return 'text-green-600';
+                        case 'expense': return 'text-red-600';
+                        default: return 'text-muted-foreground';
+                     }
+                }
+                
                 return (
                   <TableRow key={transaction.id}>
                     <TableCell className="text-muted-foreground">
@@ -301,38 +335,24 @@ export default function TransactionsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                            transaction.type === 'income'
-                              ? 'bg-green-100 dark:bg-green-900'
-                              : 'bg-red-100 dark:bg-red-900'
-                          }`}
-                        >
-                          {transaction.type === 'income' ? (
-                            <ArrowUpRight className="h-4 w-4 text-green-600 dark:text-green-400" />
-                          ) : (
-                            <ArrowDownLeft className="h-4 w-4 text-red-600 dark:text-red-400" />
-                          )}
-                        </div>
+                        {getIcon()}
                         <span className="font-medium">
                           {transaction.description}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{account?.name || 'N/A'}</Badge>
+                      <Badge variant="secondary">
+                        {transaction.type === 'transfer' 
+                            ? `${fromAccount?.name || 'N/A'} → ${toAccount?.name || 'N/A'}` 
+                            : fromAccount?.name || 'N/A'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{transaction.category}</Badge>
                     </TableCell>
-                    <TableCell
-                      className={`text-right font-medium ${
-                        transaction.type === 'income'
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {transaction.type === 'income' ? '+' : '-'}
+                    <TableCell className={`text-right font-medium ${getAmountColor()}`}>
+                      {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
                       {formatAmount(transaction.amount, currency)}
                     </TableCell>
                     <TableCell className="text-right">

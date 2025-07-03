@@ -19,10 +19,11 @@ export interface Transaction {
   userId: string;
   description: string;
   amount: number;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   date: string; // ISO string e.g., "2024-07-29"
   category: string;
-  accountId: string;
+  accountId: string; // Source for expense, Destination for income, From for transfer
+  toAccountId?: string; // Destination for transfer
 }
 
 export type NewTransaction = Omit<Transaction, 'id' | 'userId'>;

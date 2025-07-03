@@ -22,6 +22,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   ArrowUpRight,
   ArrowDownLeft,
+  ArrowLeftRight,
   DollarSign,
   Banknote,
   Landmark,
@@ -56,6 +57,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
+  const accountMap = React.useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -106,17 +108,21 @@ export default function DashboardPage() {
     );
 
     const accountBalances = accounts.map((account) => {
-      const relevantTransactions = transactions.filter(
-        (t) => t.accountId === account.id
-      );
-      const transactionTotal = relevantTransactions.reduce((total, t) => {
-        if (account.type === 'bank') {
-          return t.type === 'income' ? total + t.amount : total - t.amount;
-        }
-        if (account.type === 'credit-card') {
-          return t.type === 'expense' ? total - t.amount : total + t.amount;
-        }
-        return total;
+      const transactionTotal = transactions.reduce((total, t) => {
+          // Credits to the account (money in)
+          if (t.accountId === account.id && t.type === 'income') {
+              return total + t.amount;
+          }
+          if (t.toAccountId === account.id && t.type === 'transfer') {
+                return total + t.amount;
+          }
+
+          // Debits from the account (money out)
+          if (t.accountId === account.id && (t.type === 'expense' || t.type === 'transfer')) {
+              return total - t.amount;
+          }
+          
+          return total;
       }, 0);
       return { ...account, currentBalance: account.balance + transactionTotal };
     });
@@ -285,45 +291,58 @@ export default function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                            transaction.type === 'income'
-                              ? 'bg-green-100 dark:bg-green-900'
-                              : 'bg-red-100 dark:bg-red-900'
-                          }`}
-                        >
-                          {transaction.type === 'income' ? (
-                            <ArrowUpRight className="h-4 w-4 text-green-600 dark:text-green-400" />
-                          ) : (
-                            <ArrowDownLeft className="h-4 w-4 text-red-600 dark:text-red-400" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-medium">
-                            {transaction.description}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {transaction.category}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell
-                      className={`text-right font-medium ${
-                        transaction.type === 'income'
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {transaction.type === 'income' ? '+' : '-'}
-                      {formatCurrency(transaction.amount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {recentTransactions.map((transaction) => {
+                    const getIcon = () => {
+                        switch (transaction.type) {
+                            case 'income':
+                                return (
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 dark:bg-green-900">
+                                        <ArrowUpRight className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    </div>
+                                );
+                            case 'expense':
+                                return (
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-red-100 dark:bg-red-900">
+                                        <ArrowDownLeft className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                    </div>
+                                );
+                            case 'transfer':
+                                return (
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900">
+                                        <ArrowLeftRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                );
+                        }
+                    }
+                    const getAmountColor = () => {
+                        switch (transaction.type) {
+                            case 'income': return 'text-green-600';
+                            case 'expense': return 'text-red-600';
+                            default: return 'text-muted-foreground';
+                        }
+                    }
+                    return (
+                        <TableRow key={transaction.id}>
+                            <TableCell>
+                            <div className="flex items-center gap-3">
+                                {getIcon()}
+                                <div>
+                                <div className="font-medium">
+                                    {transaction.description}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                    {transaction.category}
+                                </div>
+                                </div>
+                            </div>
+                            </TableCell>
+                            <TableCell className={`text-right font-medium ${getAmountColor()}`}>
+                                {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
+                                {formatCurrency(transaction.amount)}
+                            </TableCell>
+                        </TableRow>
+                    );
+                })}
               </TableBody>
             </Table>
           </CardContent>

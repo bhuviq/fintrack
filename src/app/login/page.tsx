@@ -8,7 +8,7 @@ import {
   signInWithPopup,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { authenticator } from 'otplib';
 
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ import { Wallet, AlertTriangle } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile } from '@/lib/types';
+import { createUserProfileAndSeedData } from '@/services/userService';
 
 // Google SVG Icon
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -107,19 +108,8 @@ export default function LoginPage() {
           router.push('/');
         }
       } else {
-        // New user, create profile and go to welcome page
-        const [firstName, ...lastNameParts] =
-          user.displayName?.split(' ') || ['', ''];
-        const lastName = lastNameParts.join(' ');
-
-        const newProfile: Partial<UserProfile> = {
-          id: user.uid,
-          firstName: firstName || '',
-          lastName: lastName || '',
-          email: user.email!,
-          avatarUrl: user.photoURL || '',
-        };
-        await setDoc(userDocRef, newProfile);
+        // New user, create profile and seed data, then go to welcome page
+        await createUserProfileAndSeedData(user);
         router.push('/welcome');
       }
     } catch (error: any) {

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
+import { Mail, Smartphone, ShieldCheck } from 'lucide-react';
 
 export default function SettingsPage() {
   return (
@@ -42,11 +44,63 @@ export default function SettingsPage() {
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" defaultValue="user@fintrack.com" disabled />
           </div>
+           <div className="space-y-2">
+            <Label htmlFor="phone">Phone Number</Label>
+            <Input id="phone" type="tel" placeholder="e.g. +1 234 567 890" />
+          </div>
         </CardContent>
         <CardFooter className="border-t px-6 py-4">
           <Button>Save Changes</Button>
         </CardFooter>
       </Card>
+
+      <Card>
+        <CardHeader>
+            <CardTitle>Two-Factor Authentication</CardTitle>
+            <CardDescription>
+                Add an extra layer of security to your account. It is highly recommended.
+            </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="flex items-start gap-4">
+                    <Smartphone className="h-6 w-6 text-muted-foreground mt-1" />
+                    <div>
+                        <Label htmlFor="sms-auth" className="font-medium leading-none">SMS / Text Message</Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Receive a verification code via text message.
+                        </p>
+                    </div>
+                </div>
+                <Switch id="sms-auth" />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="flex items-start gap-4">
+                    <Mail className="h-6 w-6 text-muted-foreground mt-1" />
+                    <div>
+                        <Label htmlFor="email-auth" className="font-medium leading-none">Email</Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                           Receive a verification code via email.
+                        </p>
+                    </div>
+                </div>
+                <Switch id="email-auth" />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="flex items-start gap-4">
+                    <ShieldCheck className="h-6 w-6 text-muted-foreground mt-1" />
+                    <div>
+                        <Label htmlFor="authenticator-app" className="font-medium leading-none">Authenticator App</Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Use an app like Google Authenticator or Authy.
+                        </p>
+                    </div>
+                </div>
+                <Switch id="authenticator-app" />
+            </div>
+        </CardContent>
+      </Card>
+
        <Card>
         <CardHeader>
           <CardTitle>Change Password</CardTitle>

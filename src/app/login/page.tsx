@@ -71,7 +71,10 @@ export default function LoginPage() {
     React.useState<ConfirmationResult | null>(null);
   const router = useRouter();
   const { toast } = useToast();
+
+  const recaptchaVerifierRef = React.useRef<RecaptchaVerifier | null>(null);
   const recaptchaContainerRef = React.useRef<HTMLDivElement>(null);
+
 
   React.useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -90,17 +93,17 @@ export default function LoginPage() {
   }, [router, isFirebaseConfigured]);
 
   React.useEffect(() => {
-    if (!isFirebaseConfigured || typeof window === 'undefined' || window.recaptchaVerifier) {
+    if (!isFirebaseConfigured || typeof window === 'undefined') {
       return;
     }
-    // This is to ensure the reCAPTCHA verifier is only created once and is ready when needed.
-    if (recaptchaContainerRef.current) {
+    
+    if (recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
         try {
-            window.recaptchaVerifier = new RecaptchaVerifier(
+            recaptchaVerifierRef.current = new RecaptchaVerifier(
                 auth,
                 recaptchaContainerRef.current,
                 {
-                size: 'invisible',
+                  size: 'invisible',
                 }
             );
         } catch (error) {
@@ -164,8 +167,19 @@ export default function LoginPage() {
       return;
     }
     setIsSigningIn(true);
+
+    if (!recaptchaVerifierRef.current) {
+        toast({
+            variant: "destructive",
+            title: "reCAPTCHA Error",
+            description: "reCAPTCHA not ready. Please try again.",
+        });
+        setIsSigningIn(false);
+        return;
+    }
+
     try {
-      const appVerifier = window.recaptchaVerifier;
+      const appVerifier = recaptchaVerifierRef.current;
       const confirmation = await signInWithPhoneNumber(
         auth,
         phoneNumber,
@@ -175,6 +189,8 @@ export default function LoginPage() {
       setStep('otp');
     } catch (error: any) {
       console.error('Phone Sign-In Error:', error);
+      recaptchaVerifierRef.current?.clear();
+      recaptchaVerifierRef.current = null;
       toast({
         variant: 'destructive',
         title: 'SMS Sending Failed',
@@ -337,11 +353,4 @@ export default function LoginPage() {
       </Card>
     </div>
   );
-}
-
-// Add recaptchaVerifier to the window object for persistence between renders
-declare global {
-  interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
-  }
 }

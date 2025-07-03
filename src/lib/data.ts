@@ -142,9 +142,11 @@ export const MOCK_DATA = {
     },
   ],
   investments: [
-    { id: 1, name: 'Apple Inc.', symbol: 'AAPL', value: 25000.50, change: 1.2, changeAmount: 297.01 },
-    { id: 2, name: 'Tesla, Inc.', symbol: 'TSLA', value: 15000.75, change: -0.5, changeAmount: -75.38 },
-    { id: 3, name: 'Vanguard S&P 500 ETF', symbol: 'VOO', value: 32110.30, change: 0.8, changeAmount: 254.84 },
+    { id: 1, name: 'Apple Inc.', symbol: 'AAPL', value: 25000.50, change: 1.2, changeAmount: 297.01, category: 'Stocks' },
+    { id: 2, name: 'Tesla, Inc.', symbol: 'TSLA', value: 15000.75, change: -0.5, changeAmount: -75.38, category: 'Stocks' },
+    { id: 3, name: 'Vanguard S&P 500 ETF', symbol: 'VOO', value: 32110.30, change: 0.8, changeAmount: 254.84, category: 'Mutual Funds' },
+    { id: 4, name: 'Downtown Apartment', symbol: '', value: 250000, change: 0, changeAmount: 0, category: 'Real Estate' },
+    { id: 5, name: 'US Treasury Bond', symbol: 'US10Y', value: 10000, change: 0.1, changeAmount: 10, category: 'Bonds' },
   ],
   budgets: [
     { id: 1, category: 'Groceries', spent: 450, total: 800 },
@@ -168,5 +170,8 @@ export const MOCK_DATA = {
     { id: 12, name: "Investment Income", type: "income" },
     { id: 13, name: "Stocks", type: "investment" },
     { id: 14, name: "Real Estate", type: "investment" },
+    { id: 15, name: "Mutual Funds", type: "investment" },
+    { id: 16, name: "Bonds", type: "investment" },
+    { id: 17, name: "Venture Capital", type: "investment" },
   ],
 };

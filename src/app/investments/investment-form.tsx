@@ -23,6 +23,13 @@ import {
   SheetFooter,
   SheetClose,
 } from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { MOCK_DATA } from '@/lib/data';
 
 const investmentSchema = z.object({
@@ -30,9 +37,8 @@ const investmentSchema = z.object({
   name: z.string().min(2, {
     message: 'Investment name must be at least 2 characters.',
   }),
-  symbol: z.string().min(1, {
-    message: 'Symbol is required.',
-  }),
+  category: z.string().min(1, { message: 'Please select a category.' }),
+  symbol: z.string().optional(),
   value: z.coerce
     .number()
     .positive({ message: 'Value must be a positive number.' }),
@@ -40,12 +46,14 @@ const investmentSchema = z.object({
 
 export type InvestmentFormValues = z.infer<typeof investmentSchema>;
 type Investment = (typeof MOCK_DATA.investments)[0];
+type Category = (typeof MOCK_DATA.categories)[0];
 
 interface InvestmentFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   investment?: Investment | null;
   onSubmit: (data: InvestmentFormValues) => void;
+  availableCategories: Category[];
 }
 
 export function InvestmentForm({
@@ -53,15 +61,23 @@ export function InvestmentForm({
   onOpenChange,
   investment,
   onSubmit,
+  availableCategories,
 }: InvestmentFormProps) {
   const form = useForm<InvestmentFormValues>({
     resolver: zodResolver(investmentSchema),
     defaultValues: {
       name: '',
+      category: '',
       symbol: '',
       value: undefined,
     },
   });
+
+  const investmentCategory = form.watch('category');
+  const showSymbol = React.useMemo(() => {
+    return ['Stocks', 'Bonds', 'Mutual Funds'].includes(investmentCategory);
+  }, [investmentCategory]);
+
 
   React.useEffect(() => {
     if (isOpen) {
@@ -69,12 +85,14 @@ export function InvestmentForm({
         form.reset({
           id: investment.id,
           name: investment.name,
+          category: investment.category,
           symbol: investment.symbol,
           value: investment.value,
         });
       } else {
         form.reset({
           name: '',
+          category: '',
           symbol: '',
           value: undefined,
         });
@@ -120,17 +138,44 @@ export function InvestmentForm({
             />
             <FormField
               control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an investment category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.name}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {showSymbol && <FormField
+              control={form.control}
               name="symbol"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Symbol</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. AAPL" {...field} />
+                    <Input placeholder="e.g. AAPL" {...field} value={field.value ?? ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            />}
              <FormField
               control={form.control}
               name="value"

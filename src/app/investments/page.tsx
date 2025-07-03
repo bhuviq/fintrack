@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { MOCK_DATA } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,11 @@ export default function InvestmentsPage() {
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [investmentToDelete, setInvestmentToDelete] = useState<Investment | null>(null);
+
+  const investmentCategories = useMemo(
+    () => MOCK_DATA.categories.filter((c) => c.type === 'investment'),
+    []
+  );
 
   const totalValue = investments.reduce((acc, investment) => acc + investment.value, 0);
   const totalChange = investments.reduce((acc, investment) => acc + investment.changeAmount, 0);
@@ -80,7 +86,8 @@ export default function InvestmentsPage() {
             ? {
                 ...i,
                 name: data.name,
-                symbol: data.symbol,
+                category: data.category,
+                symbol: data.symbol || '',
                 value: newValue,
                 change: newChangePercentage,
                 changeAmount: newChangeAmount,
@@ -92,7 +99,8 @@ export default function InvestmentsPage() {
       const newInvestment: Investment = {
         id: Math.max(0, ...investments.map((i) => i.id)) + 1,
         name: data.name,
-        symbol: data.symbol,
+        category: data.category,
+        symbol: data.symbol || '',
         value: Number(data.value),
         change: 0,
         changeAmount: 0,
@@ -146,6 +154,7 @@ export default function InvestmentsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Symbol</TableHead>
                 <TableHead className="text-right">Value</TableHead>
                 <TableHead className="text-right">Today's Change</TableHead>
@@ -156,7 +165,10 @@ export default function InvestmentsPage() {
               {investments.map((investment) => (
                 <TableRow key={investment.id}>
                   <TableCell className="font-medium">{investment.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{investment.symbol}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{investment.category}</Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>
                   <TableCell className="text-right font-medium">${investment.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     <div className="flex items-center justify-end">
@@ -195,6 +207,7 @@ export default function InvestmentsPage() {
         onOpenChange={setIsSheetOpen}
         investment={editingInvestment}
         onSubmit={handleSaveInvestment}
+        availableCategories={investmentCategories}
       />
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>

@@ -32,6 +32,16 @@ export default function GoalsPage() {
   const [deleteContributionAlertOpen, setDeleteContributionAlertOpen] = React.useState(false);
   const [contributionToDelete, setContributionToDelete] = React.useState<{ goalId: number; contributionId: number } | null>(null);
 
+  // This effect ensures that if the 'selectedGoal' is being displayed in a sheet,
+  // it always has the most up-to-date data from the main 'goals' list.
+  React.useEffect(() => {
+    if (selectedGoal) {
+      const updatedGoalData = goals.find(g => g.id === selectedGoal.id);
+      setSelectedGoal(updatedGoalData || null);
+    }
+  }, [goals]); // This effect runs only when the main goals list changes.
+
+
   const handleAddGoal = () => {
     setSelectedGoal(null);
     setIsGoalFormOpen(true);
@@ -49,7 +59,7 @@ export default function GoalsPage() {
 
   const confirmDeleteGoal = () => {
     if (selectedGoal) {
-      setGoals(goals.filter(g => g.id !== selectedGoal.id));
+      setGoals(currentGoals => currentGoals.filter(g => g.id !== selectedGoal.id));
     }
     setDeleteGoalAlertOpen(false);
     setSelectedGoal(null);
@@ -57,7 +67,7 @@ export default function GoalsPage() {
 
   const handleSaveGoal = (data: GoalFormValues) => {
     if (selectedGoal && data.id) {
-      setGoals(goals.map(g => g.id === data.id ? { ...g, name: data.name, target: data.target } : g));
+      setGoals(currentGoals => currentGoals.map(g => g.id === data.id ? { ...g, name: data.name, target: data.target } : g));
     } else {
       const newGoal: Goal = {
         id: Math.max(0, ...goals.map(g => g.id)) + 1,
@@ -66,7 +76,7 @@ export default function GoalsPage() {
         current: 0,
         history: [],
       };
-      setGoals([newGoal, ...goals]);
+      setGoals(currentGoals => [newGoal, ...currentGoals]);
     }
     setIsGoalFormOpen(false);
     setSelectedGoal(null);
@@ -86,7 +96,7 @@ export default function GoalsPage() {
       amount: data.amount,
     };
 
-    setGoals(goals.map(g => {
+    setGoals(currentGoals => currentGoals.map(g => {
       if (g.id === selectedGoal.id) {
         const updatedHistory = [...g.history, newContribution];
         const updatedCurrent = updatedHistory.reduce((acc, item) => acc + item.amount, 0);
@@ -112,7 +122,7 @@ export default function GoalsPage() {
   const confirmDeleteContribution = () => {
     if (!contributionToDelete) return;
 
-    setGoals(goals.map(g => {
+    setGoals(currentGoals => currentGoals.map(g => {
       if (g.id === contributionToDelete.goalId) {
         const updatedHistory = g.history.filter(h => h.id !== contributionToDelete.contributionId);
         const updatedCurrent = updatedHistory.reduce((acc, item) => acc + item.amount, 0);
@@ -120,9 +130,6 @@ export default function GoalsPage() {
       }
       return g;
     }));
-
-    // If the history sheet is open for the goal we just modified, we need to update its view.
-    setSelectedGoal(prev => prev && prev.id === contributionToDelete.goalId ? goals.find(g => g.id === contributionToDelete.goalId) || null : prev);
     
     setDeleteContributionAlertOpen(false);
     setContributionToDelete(null);

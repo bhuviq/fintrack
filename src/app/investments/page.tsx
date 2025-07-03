@@ -144,7 +144,16 @@ export default function InvestmentsPage() {
 
   // NOTE: This sums up values from different currencies without conversion.
   // This is a simplification. A real-world app would need currency conversion rates.
-  const totalValue = filteredInvestments.reduce((acc, investment) => acc + investment.value, 0);
+  const totalValue = useMemo(() => {
+    return filteredInvestments.reduce((acc, investment) => {
+      const investmentNet = (investment.history || []).reduce((sum, tx) => {
+        const txValue = tx.quantity * tx.price;
+        return tx.type === 'buy' ? sum + txValue : sum - txValue;
+      }, 0);
+      return acc + investmentNet;
+    }, 0);
+  }, [filteredInvestments]);
+  
   const totalChange = filteredInvestments.reduce((acc, investment) => acc + investment.changeAmount, 0);
 
   const formatAmount = (amount: number, currency: Currency) => {
@@ -223,18 +232,7 @@ export default function InvestmentsPage() {
         const { id, ...investmentData } = data;
         
         if (editingInvestment && id) {
-            const originalInvestment = investments.find((i) => i.id === id);
-            if (!originalInvestment) return;
-
-            const startOfDayValue = originalInvestment.value - originalInvestment.changeAmount;
-            const newChangeAmount = investmentData.value - startOfDayValue;
-            const newChangePercentage = startOfDayValue !== 0 ? (newChangeAmount / startOfDayValue) * 100 : 0;
-            
-            await updateInvestment(id, { 
-                ...investmentData,
-                change: newChangePercentage, 
-                changeAmount: newChangeAmount 
-            });
+           await updateInvestment(id, investmentData);
         } else {
             await addInvestment(investmentData as NewInvestment);
         }

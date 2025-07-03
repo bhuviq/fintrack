@@ -19,8 +19,7 @@ import { GoalForm, type GoalFormValues } from './goal-form';
 import { GoalContributionForm, type ContributionFormValues } from './goal-contribution-form';
 import { GoalHistorySheet } from './goal-history-sheet';
 
-type Goal = (typeof MOCK_DATA.goals)[0];
-type GoalHistoryItem = Goal['history'][0];
+type Goal = (typeof MOCK_DATA.goals)[number];
 
 export default function GoalsPage() {
   const [goals, setGoals] = React.useState<Goal[]>(MOCK_DATA.goals);

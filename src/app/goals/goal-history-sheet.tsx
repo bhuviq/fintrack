@@ -21,7 +21,7 @@ import { Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { MOCK_DATA } from '@/lib/data';
 
-type Goal = (typeof MOCK_DATA.goals)[0];
+type Goal = (typeof MOCK_DATA.goals)[number];
 
 interface GoalHistorySheetProps {
   isOpen: boolean;

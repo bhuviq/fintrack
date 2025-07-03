@@ -32,7 +32,7 @@ const goalSchema = z.object({
 });
 
 export type GoalFormValues = z.infer<typeof goalSchema>;
-type Goal = (typeof MOCK_DATA.goals)[0];
+type Goal = (typeof MOCK_DATA.goals)[number];
 
 interface GoalFormProps {
   isOpen: boolean;

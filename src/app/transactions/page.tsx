@@ -17,13 +17,26 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   ArrowUpRight,
   ArrowDownLeft,
   MoreHorizontal,
   PlusCircle,
+  Trash2,
+  Edit,
 } from 'lucide-react';
 import { TransactionForm, type TransactionFormValues } from './transaction-form';
 import { format } from 'date-fns';
@@ -37,6 +50,8 @@ export default function TransactionsPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
+  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
 
   const handleAddTransaction = () => {
     setEditingTransaction(null);
@@ -47,6 +62,20 @@ export default function TransactionsPage() {
     setEditingTransaction(transaction);
     setIsSheetOpen(true);
   };
+
+  const handleDeleteTransaction = (transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+    setDeleteAlertOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (transactionToDelete) {
+      setTransactions(transactions.filter(t => t.id !== transactionToDelete.id));
+    }
+    setDeleteAlertOpen(false);
+    setTransactionToDelete(null);
+  };
+
 
   const handleSaveTransaction = (data: TransactionFormValues) => {
     if (editingTransaction && data.id) {
@@ -64,7 +93,7 @@ export default function TransactionsPage() {
       );
     } else {
       const newTransaction: Transaction = {
-        id: Math.max(...transactions.map((t) => t.id)) + 1,
+        id: Math.max(0, ...transactions.map((t) => t.id)) + 1,
         description: data.description,
         amount: Number(data.amount),
         type: data.type,
@@ -157,7 +186,13 @@ export default function TransactionsPage() {
                         <DropdownMenuItem
                           onClick={() => handleEditTransaction(transaction)}
                         >
+                          <Edit className="mr-2 h-4 w-4" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTransaction(transaction)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -175,6 +210,21 @@ export default function TransactionsPage() {
         transaction={editingTransaction}
         onSubmit={handleSaveTransaction}
       />
+      
+      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this transaction.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

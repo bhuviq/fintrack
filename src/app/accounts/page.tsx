@@ -60,7 +60,7 @@ export default function AccountsPage() {
         toast({
             variant: "destructive",
             title: "Network Error",
-            description: "Could not fetch data. You might be offline.",
+            description: "Could not connect to the database. Please check your internet connection and Firebase configuration.",
         });
     } finally {
         setIsLoading(false);

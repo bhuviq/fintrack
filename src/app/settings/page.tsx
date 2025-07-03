@@ -43,7 +43,7 @@ export default function SettingsPage() {
         toast({
             variant: "destructive",
             title: "Network Error",
-            description: "Could not load user profile. You might be offline.",
+            description: "Could not load user profile. Please check your internet connection and Firebase configuration.",
         })
     } finally {
         setIsLoading(false);

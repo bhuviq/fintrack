@@ -71,7 +71,7 @@ export default function WelcomePage() {
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: 'Could not load your profile.',
+                description: 'Could not load your profile. Please check your internet connection and Firebase configuration.',
             });
         } finally {
             setIsLoading(false);

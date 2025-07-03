@@ -223,19 +223,26 @@ export default function InvestmentsPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Symbol</TableHead>
+                <TableHead className="text-right">Quantity</TableHead>
                 <TableHead className="text-right">Value</TableHead>
                 <TableHead className="text-right">Today's Change</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInvestments.map((investment) => (
+              {filteredInvestments.map((investment) => {
+                const quantity = investment.history.reduce((acc, item) => {
+                    return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
+                }, 0);
+
+                return (
                 <TableRow key={investment.id}>
                   <TableCell className="font-medium">{investment.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{investment.category}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>
+                  <TableCell className="text-right font-medium">{quantity.toLocaleString()}</TableCell>
                   <TableCell className="text-right font-medium">${investment.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     <div className="flex items-center justify-end">
@@ -268,7 +275,7 @@ export default function InvestmentsPage() {
                       </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
         </CardContent>

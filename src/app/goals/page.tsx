@@ -36,9 +36,20 @@ export default function GoalsPage() {
   React.useEffect(() => {
     if (selectedGoal) {
       const updatedGoalData = goals.find(g => g.id === selectedGoal.id);
-      setSelectedGoal(updatedGoalData || null);
+      if (updatedGoalData) {
+        // Only update state if the data has actually changed to prevent loops.
+        setSelectedGoal(currentSelectedGoal => {
+          if (JSON.stringify(currentSelectedGoal) !== JSON.stringify(updatedGoalData)) {
+            return updatedGoalData;
+          }
+          return currentSelectedGoal;
+        });
+      } else {
+        // Goal was deleted, so clear selection
+        setSelectedGoal(null);
+      }
     }
-  }, [goals, selectedGoal?.id]);
+  }, [goals, selectedGoal]);
 
 
   const handleAddGoal = () => {
@@ -69,7 +80,7 @@ export default function GoalsPage() {
       setGoals(currentGoals => currentGoals.map(g => g.id === data.id ? { ...g, name: data.name, target: data.target } : g));
     } else {
       const newGoal: Goal = {
-        id: Math.max(0, ...goals.map(g => g.id)) + 1,
+        id: Math.max(0, ...goals.map(g => g.id).concat(0)) + 1,
         name: data.name,
         target: data.target,
         current: 0,
@@ -90,7 +101,7 @@ export default function GoalsPage() {
     if (!selectedGoal) return;
 
     const newContribution = {
-      id: Math.max(0, ...(selectedGoal.history || []).map(h => h.id)) + 1,
+      id: Math.max(0, ...(selectedGoal.history || []).map(h => h.id).concat(0)) + 1,
       date: format(data.date, 'yyyy-MM-dd'),
       amount: data.amount,
     };
@@ -148,7 +159,7 @@ export default function GoalsPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {goals.map((goal) => {
-          const currentAmount = (goal.history || []).reduce((acc, item) => acc + item.amount, 0);
+          const currentAmount = goal.current || (goal.history || []).reduce((acc, item) => acc + item.amount, 0);
           const percentage = goal.target > 0 ? (currentAmount / goal.target) * 100 : 0;
 
           return (

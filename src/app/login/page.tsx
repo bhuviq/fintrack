@@ -77,7 +77,7 @@ export default function LoginPage() {
             </TabsList>
             <TabsContent value="login">
               <form onSubmit={handleSendOtp}>
-                <CardContent className="space-y-4 pt-6">
+                <CardContent className="flex flex-col justify-center min-h-44 space-y-4 pt-6">
                   <div className="space-y-2">
                     <Label htmlFor="loginIdentifier">Email or Phone Number</Label>
                     <Input
@@ -103,7 +103,7 @@ export default function LoginPage() {
             </TabsContent>
             <TabsContent value="signup">
               <form onSubmit={handleSendOtp}>
-                <CardContent className="space-y-4 pt-6">
+                <CardContent className="min-h-44 space-y-4 pt-6">
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
                     <Input

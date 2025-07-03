@@ -14,6 +14,16 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 export default function CategoriesPage() {
@@ -24,6 +34,9 @@ export default function CategoriesPage() {
 
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [editingCategory, setEditingCategory] = React.useState<Category | null>(null);
+  const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
+  const [categoryToDelete, setCategoryToDelete] = React.useState<Category | null>(null);
+
 
   const categoryTypes: Category['type'][] = ['expense', 'income', 'investment'];
 
@@ -66,13 +79,22 @@ export default function CategoriesPage() {
     setIsSheetOpen(true);
   };
   
-  const handleDeleteCategory = async (categoryId: string) => {
-    try {
-        await deleteCategory(categoryId);
-        await fetchData();
-    } catch (error) {
-        console.error("Failed to delete category:", error);
+  const handleDeleteCategory = (category: Category) => {
+    setCategoryToDelete(category);
+    setDeleteAlertOpen(true);
+  };
+  
+  const confirmDelete = async () => {
+    if (categoryToDelete) {
+        try {
+            await deleteCategory(categoryToDelete.id);
+            await fetchData();
+        } catch (error) {
+            console.error("Failed to delete category:", error);
+        }
     }
+    setDeleteAlertOpen(false);
+    setCategoryToDelete(null);
   };
 
   const handleSaveCategory = async (data: CategoryFormValues) => {
@@ -152,26 +174,26 @@ export default function CategoriesPage() {
                     {categories.filter(c => c.type === type).map((category) => (
                       <li key={category.id} className="flex items-center justify-between p-4 hover:bg-muted/50">
                         <span className="font-medium">{category.name}</span>
-                        <div className="flex items-center gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleEditCategory(category)}
-                            disabled={category.isDefault}
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleDeleteCategory(category.id)}
-                            disabled={category.isDefault}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                        </div>
+                        {!category.isDefault && (
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleEditCategory(category)}
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleDeleteCategory(category)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -192,6 +214,21 @@ export default function CategoriesPage() {
         category={editingCategory}
         onSubmit={handleSaveCategory}
       />
+
+      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this category.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

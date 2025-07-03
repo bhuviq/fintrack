@@ -144,14 +144,20 @@ export default function InvestmentsPage() {
 
   // NOTE: This sums up values from different currencies without conversion.
   // This is a simplification. A real-world app would need currency conversion rates.
-  const totalValue = useMemo(() => {
-    return filteredInvestments.reduce((acc, investment) => {
-      const investmentNet = (investment.history || []).reduce((sum, tx) => {
-        const txValue = tx.quantity * tx.price;
-        return tx.type === 'buy' ? sum + txValue : sum - txValue;
-      }, 0);
-      return acc + investmentNet;
-    }, 0);
+  const { portfolioValue, totalInvestment } = useMemo(() => {
+    return filteredInvestments.reduce(
+      (acc, investment) => {
+        const investmentNet = (investment.history || []).reduce((sum, tx) => {
+          const txValue = tx.quantity * tx.price;
+          return tx.type === 'buy' ? sum + txValue : sum - txValue;
+        }, 0);
+
+        acc.portfolioValue += investment.value;
+        acc.totalInvestment += investmentNet;
+        return acc;
+      },
+      { portfolioValue: 0, totalInvestment: 0 }
+    );
   }, [filteredInvestments]);
   
   const totalChange = filteredInvestments.reduce((acc, investment) => acc + investment.changeAmount, 0);
@@ -419,10 +425,14 @@ export default function InvestmentsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <p className="text-sm text-muted-foreground">Total Portfolio Value</p>
-              <p className="text-3xl font-bold">{formatGlobalCurrency(totalValue)}</p>
+              <p className="text-3xl font-bold">{formatGlobalCurrency(portfolioValue)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Investment</p>
+              <p className="text-3xl font-bold">{formatGlobalCurrency(totalInvestment)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Today's Change</p>

@@ -32,12 +32,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [editingAccount, setEditingAccount] = React.useState<Account | null>(null);
@@ -53,12 +55,17 @@ export default function AccountsPage() {
         ]);
         setAccounts(fetchedAccounts);
         setTransactions(fetchedTransactions);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to fetch data:", error);
+        toast({
+            variant: "destructive",
+            title: "Network Error",
+            description: "Could not fetch data. You might be offline.",
+        });
     } finally {
         setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   React.useEffect(() => {
      const unsubscribe = onAuthStateChanged(auth, (user) => {

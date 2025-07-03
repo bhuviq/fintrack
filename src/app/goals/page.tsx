@@ -23,12 +23,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function GoalsPage() {
   const [goals, setGoals] = React.useState<Goal[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   const [isGoalFormOpen, setIsGoalFormOpen] = React.useState(false);
   const [isContributionFormOpen, setIsContributionFormOpen] = React.useState(false);
@@ -43,12 +45,17 @@ export default function GoalsPage() {
     try {
         const fetchedGoals = await getGoals();
         setGoals(fetchedGoals);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to fetch goals:", error);
+        toast({
+            variant: "destructive",
+            title: "Network Error",
+            description: "Could not fetch data. You might be offline.",
+        });
     } finally {
         setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {

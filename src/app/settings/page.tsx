@@ -32,25 +32,26 @@ export default function SettingsPage() {
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const fetchProfile = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const userProfile = await getUserProfile();
+        setProfile(userProfile);
+    } catch (error: any) {
+        console.error("Failed to fetch profile:", error);
+        toast({
+            variant: "destructive",
+            title: "Network Error",
+            description: "Could not load user profile. You might be offline.",
+        })
+    } finally {
+        setIsLoading(false);
+    }
+  }, [toast]);
+
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        const fetchProfile = async () => {
-          setIsLoading(true);
-          try {
-              const userProfile = await getUserProfile();
-              setProfile(userProfile);
-          } catch (error) {
-              console.error("Failed to fetch profile:", error);
-              toast({
-                  variant: "destructive",
-                  title: "Error",
-                  description: "Could not load user profile.",
-              })
-          } finally {
-              setIsLoading(false);
-          }
-        }
         fetchProfile();
       } else {
         router.push('/login');
@@ -58,7 +59,7 @@ export default function SettingsPage() {
     });
 
     return () => unsubscribe();
-  }, [router, toast]);
+  }, [router, fetchProfile]);
   
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {

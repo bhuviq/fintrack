@@ -44,6 +44,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 export default function DashboardPage() {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
@@ -52,34 +53,41 @@ export default function DashboardPage() {
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
+  const fetchData = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [
+        fetchedTransactions,
+        fetchedGoals,
+        fetchedInvestments,
+        fetchedAccounts,
+      ] = await Promise.all([
+        getTransactions(),
+        getGoals(),
+        getInvestments(),
+        getAccounts(),
+      ]);
+      setTransactions(fetchedTransactions);
+      setGoals(fetchedGoals);
+      setInvestments(fetchedInvestments);
+      setAccounts(fetchedAccounts);
+    } catch (error: any) {
+      console.error('Failed to fetch dashboard data:', error);
+      toast({
+          variant: "destructive",
+          title: "Network Error",
+          description: "Could not fetch data. You might be offline.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+  
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        const fetchData = async () => {
-          setIsLoading(true);
-          try {
-            const [
-              fetchedTransactions,
-              fetchedGoals,
-              fetchedInvestments,
-              fetchedAccounts,
-            ] = await Promise.all([
-              getTransactions(),
-              getGoals(),
-              getInvestments(),
-              getAccounts(),
-            ]);
-            setTransactions(fetchedTransactions);
-            setGoals(fetchedGoals);
-            setInvestments(fetchedInvestments);
-            setAccounts(fetchedAccounts);
-          } catch (error) {
-            console.error('Failed to fetch dashboard data:', error);
-          } finally {
-            setIsLoading(false);
-          }
-        };
         fetchData();
       } else {
         router.push('/login');
@@ -87,7 +95,7 @@ export default function DashboardPage() {
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, fetchData]);
 
   const summary = React.useMemo(() => {
     const totalInvestments = investments.reduce(

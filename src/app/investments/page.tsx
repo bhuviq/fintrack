@@ -51,7 +51,7 @@ export default function InvestmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
-  const { formatCurrency: formatGlobalCurrency } = useCurrency();
+  const { currency: globalCurrency } = useCurrency();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
@@ -168,6 +168,13 @@ export default function InvestmentsPage() {
   
   const totalProfit = portfolioValue - totalInvestment;
   const totalProfitPercentage = totalInvestment !== 0 ? (totalProfit / totalInvestment) * 100 : 0;
+  
+  const formatNumber = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
 
   const formatAmount = (amount: number, currency: Currency) => {
     return new Intl.NumberFormat('en-US', {
@@ -432,20 +439,20 @@ export default function InvestmentsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="text-sm text-muted-foreground">Total Portfolio Value</p>
-              <p className="text-3xl font-bold">{formatGlobalCurrency(portfolioValue)}</p>
+              <p className="text-3xl font-bold">{formatNumber(portfolioValue)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Investment</p>
-              <p className="text-3xl font-bold">{formatGlobalCurrency(totalInvestment)}</p>
+              <p className="text-3xl font-bold">{formatNumber(totalInvestment)}</p>
             </div>
             <div>
                 <p className="text-sm text-muted-foreground">Total Profit / Loss</p>
                 <div className={`flex items-center text-3xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {totalProfit >= 0 ? <ArrowUp className="h-7 w-7" /> : <ArrowDown className="h-7 w-7" />}
-                    {formatGlobalCurrency(Math.abs(totalProfit))}
+                    {formatNumber(Math.abs(totalProfit))}
                 </div>
                  <p className={`text-sm font-medium ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {totalProfit >= 0 ? '+' : ''}{totalProfitPercentage.toFixed(2)}%
@@ -455,7 +462,7 @@ export default function InvestmentsPage() {
               <p className="text-sm text-muted-foreground">Today's Change</p>
               <div className={`flex items-center text-3xl font-bold ${totalChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {totalChange >= 0 ? <ArrowUp className="h-7 w-7" /> : <ArrowDown className="h-7 w-7" />}
-                {formatGlobalCurrency(Math.abs(totalChange))}
+                {formatNumber(Math.abs(totalChange))}
               </div>
             </div>
           </div>

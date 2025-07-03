@@ -86,7 +86,7 @@ export interface UserProfile {
     id: string; // Corresponds to auth user ID
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string;
     phone?: string;
     avatarUrl?: string;
 }

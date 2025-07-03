@@ -1,17 +1,24 @@
-import { db, getCurrentUserId } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import type { Budget, NewBudget } from '@/lib/types';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 
-const userId = getCurrentUserId();
 const budgetsCollection = collection(db, 'budgets');
 
+const getUserId = () => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated. Please log in.");
+    return user.uid;
+};
+
 export const getBudgets = async (): Promise<Budget[]> => {
+    const userId = getUserId();
     const q = query(budgetsCollection, where("userId", "==", userId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Budget));
 };
 
 export const addBudget = async (budgetData: NewBudget): Promise<string> => {
+    const userId = getUserId();
     const docRef = await addDoc(budgetsCollection, { ...budgetData, userId });
     return docRef.id;
 }

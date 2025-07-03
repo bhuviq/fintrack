@@ -1,17 +1,24 @@
-import { db, getCurrentUserId } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import type { Category, NewCategory } from '@/lib/types';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 
-const userId = getCurrentUserId();
 const categoriesCollection = collection(db, 'categories');
 
+const getUserId = () => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated. Please log in.");
+    return user.uid;
+};
+
 export const getCategories = async (): Promise<Category[]> => {
+    const userId = getUserId();
     const q = query(categoriesCollection, where("userId", "==", userId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
 };
 
 export const addCategory = async (categoryData: NewCategory): Promise<string> => {
+    const userId = getUserId();
     const docRef = await addDoc(categoriesCollection, { ...categoryData, userId });
     return docRef.id;
 }

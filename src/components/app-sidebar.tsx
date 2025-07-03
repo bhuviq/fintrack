@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
@@ -25,6 +26,11 @@ import {
   Shapes,
   Landmark,
 } from 'lucide-react';
+import { auth } from '@/lib/firebase';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { getUserProfile } from '@/services/userService';
+import type { UserProfile } from '@/lib/types';
+
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -40,10 +46,38 @@ const navItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
 
-  const handleLogout = () => {
-    router.push('/login');
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+            const profile = await getUserProfile();
+            setUserProfile(profile);
+        } catch (error) {
+            console.error("Failed to fetch user profile", error);
+            // Handle case where user is authenticated but profile call fails
+            setUserProfile(null);
+        }
+      } else {
+        setUserProfile(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+        await signOut(auth);
+        router.push('/login');
+    } catch (error) {
+        console.error("Logout failed", error);
+    }
   };
+
+  const getInitials = (firstName?: string, lastName?: string) => {
+    return `${firstName?.[0] || ''}${lastName?.[0] || ''}` || 'U';
+  }
 
   return (
     <Sidebar>
@@ -73,12 +107,12 @@ export function AppSidebar() {
       <SidebarFooter>
         <div className="flex items-center gap-3">
           <Avatar>
-            <AvatarImage src="https://placehold.co/40x40.png" alt="@shadcn" data-ai-hint="person avatar" />
-            <AvatarFallback>U</AvatarFallback>
+            <AvatarImage src={userProfile?.avatarUrl || "https://placehold.co/40x40.png"} alt="User" data-ai-hint="person avatar" />
+            <AvatarFallback>{getInitials(userProfile?.firstName, userProfile?.lastName)}</AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <p className="text-sm font-semibold">User</p>
-            <p className="text-xs text-muted-foreground">user@fintrack.com</p>
+          <div className="flex-1 overflow-hidden">
+            <p className="text-sm font-semibold truncate">{userProfile?.firstName} {userProfile?.lastName}</p>
+            <p className="text-xs text-muted-foreground truncate">{userProfile?.email || userProfile?.phone || 'No contact info'}</p>
           </div>
           <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />

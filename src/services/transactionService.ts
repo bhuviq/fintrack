@@ -1,17 +1,25 @@
-import { db, getCurrentUserId } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import type { Transaction, NewTransaction } from '@/lib/types';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 
-const userId = getCurrentUserId();
 const transactionsCollection = collection(db, 'transactions');
 
+const getUserId = () => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated. Please log in.");
+    return user.uid;
+};
+
+
 export const getTransactions = async (): Promise<Transaction[]> => {
+    const userId = getUserId();
     const q = query(transactionsCollection, where("userId", "==", userId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
 };
 
 export const addTransaction = async (transactionData: NewTransaction): Promise<string> => {
+    const userId = getUserId();
     const docRef = await addDoc(transactionsCollection, { ...transactionData, userId });
     return docRef.id;
 }

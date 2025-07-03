@@ -1,3 +1,4 @@
+
 'use client';
 
 import './globals.css';
@@ -13,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isLoginPage = pathname === '/login';
+  const isAuthPage = pathname === '/login' || pathname === '/welcome';
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -28,7 +29,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        {isLoginPage ? (
+        {isAuthPage ? (
           <>
             {children}
             <Toaster />

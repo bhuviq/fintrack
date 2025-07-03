@@ -1,3 +1,4 @@
+
 import { db, auth } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
@@ -23,20 +24,9 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     if (docSnap.exists()) {
         return { id: docSnap.id, ...docSnap.data() } as UserProfile;
     } else {
-        // Create a default profile if it doesn't exist.
-        // This can happen for users signing up with a phone number.
-        const currentUser = auth.currentUser;
-        if (!currentUser) return null;
-
-        const defaultProfile: UserProfile = {
-            id: userId,
-            firstName: 'New',
-            lastName: 'User',
-            email: currentUser.email || undefined,
-            avatarUrl: currentUser.photoURL || undefined
-        };
-        await setDoc(userDocRef, defaultProfile, { merge: true });
-        return defaultProfile;
+        // This should not happen in the normal flow, as the profile is created on sign-up.
+        console.warn("User profile document not found.");
+        return null;
     }
 };
 

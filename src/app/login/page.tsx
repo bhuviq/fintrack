@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -83,25 +84,29 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Check if user profile exists, if not, create one
+      // Check if user profile exists
       const userDocRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(userDocRef);
 
-      if (!docSnap.exists()) {
+      if (docSnap.exists()) {
+        // Existing user, go to dashboard
+        router.push('/');
+      } else {
+        // New user, create profile and go to welcome page
         const [firstName, ...lastNameParts] =
           user.displayName?.split(' ') || ['', ''];
         const lastName = lastNameParts.join(' ');
 
-        const newProfile: UserProfile = {
+        const newProfile: Partial<UserProfile> = {
           id: user.uid,
-          firstName: firstName || 'New',
-          lastName: lastName || 'User',
+          firstName: firstName || '',
+          lastName: lastName || '',
           email: user.email!,
           avatarUrl: user.photoURL || '',
         };
-        await setDoc(userDocRef, newProfile, { merge: true });
+        await setDoc(userDocRef, newProfile);
+        router.push('/welcome');
       }
-      router.push('/');
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user') {
         // User closed the sign-in popup. This is not an error we need to show.
@@ -161,7 +166,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Welcome to FinTrack</CardTitle>
           <CardDescription>
-            Sign in or create an account with Google to manage your finances.
+            Sign up or log in with Google to manage your finances.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">

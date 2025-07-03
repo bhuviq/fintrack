@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -91,6 +92,7 @@ export default function SettingsPage() {
             firstName: profile.firstName,
             lastName: profile.lastName,
             avatarUrl: profile.avatarUrl,
+            phone: profile.phone,
         });
         toast({
             title: "Success",
@@ -180,14 +182,20 @@ export default function SettingsPage() {
               <Input id="lastName" value={profile.lastName} onChange={handleInputChange} />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={profile.email}
-              disabled
-            />
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                id="email"
+                type="email"
+                value={profile.email}
+                disabled
+                />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input id="phone" type="tel" value={profile.phone || ''} onChange={handleInputChange} />
+            </div>
           </div>
         </CardContent>
         <CardFooter className="border-t px-6 py-4">

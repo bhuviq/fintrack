@@ -85,7 +85,7 @@ export function TransactionForm({
       type: 'expense',
       date: new Date(),
       category: '',
-      accountId: undefined,
+      accountId: '',
     },
   });
 
@@ -123,7 +123,7 @@ export function TransactionForm({
           type: 'expense',
           date: new Date(),
           category: '',
-          accountId: undefined,
+          accountId: '',
         });
       }
     }
@@ -139,7 +139,7 @@ export function TransactionForm({
     if (currentAccountId) {
         const accountIsValid = availableAccounts.some(acc => acc.id === currentAccountId);
         if (!accountIsValid) {
-            form.setValue('accountId', undefined as any, { shouldValidate: true });
+            form.setValue('accountId', '', { shouldValidate: true });
         }
     }
   }, [transactionType, form, availableAccounts]);
@@ -207,8 +207,7 @@ export function TransactionForm({
                   <FormLabel>Account</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    value={field.value?.toString()}
-                    defaultValue={field.value?.toString()}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -217,7 +216,7 @@ export function TransactionForm({
                     </FormControl>
                     <SelectContent>
                       {availableAccounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id.toString()}>
+                        <SelectItem key={account.id} value={account.id}>
                           {account.name}
                         </SelectItem>
                       ))}

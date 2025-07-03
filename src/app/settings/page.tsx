@@ -19,16 +19,20 @@ import { ShieldCheck } from 'lucide-react';
 import { getUserProfile, updateUserProfile } from '@/services/userService';
 import type { UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast";
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { TwoFactorForm } from './two-factor-form';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [is2faFormOpen, setIs2faFormOpen] = React.useState(false);
+  const [disable2faAlertOpen, setDisable2faAlertOpen] = React.useState(false);
   const router = useRouter();
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -108,6 +112,37 @@ export default function SettingsPage() {
     }
   }
 
+  const handle2faToggle = (enabled: boolean) => {
+    if (enabled) {
+        setIs2faFormOpen(true);
+    } else {
+        setDisable2faAlertOpen(true);
+    }
+  };
+
+  const confirmDisable2fa = async () => {
+    try {
+        await updateUserProfile({
+            twoFactorEnabled: false,
+            twoFactorSecret: '',
+        });
+        toast({
+            title: "Success",
+            description: "Two-Factor Authentication has been disabled.",
+        });
+        await fetchProfile();
+    } catch (error) {
+        console.error("Failed to disable 2FA:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not disable 2FA. Please try again.",
+        })
+    }
+    setDisable2faAlertOpen(false);
+  };
+
+
   if(isLoading || !profile) {
     return (
         <div className="space-y-6">
@@ -139,98 +174,126 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your account and profile settings.
-        </p>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Update your personal information.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
-              <AvatarImage
-                src={profile.avatarUrl || `https://placehold.co/80x80.png`}
-                alt="User"
-                data-ai-hint="person avatar"
-              />
-              <AvatarFallback>{profile.firstName?.[0] || 'U'}</AvatarFallback>
-            </Avatar>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handlePhotoChange}
-              className="hidden"
-              accept="image/*"
-            />
-            <Button variant="outline" onClick={handleChangePhotoClick}>
-              Change Photo
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First Name</Label>
-              <Input id="firstName" value={profile.firstName} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input id="lastName" value={profile.lastName} onChange={handleInputChange} />
-            </div>
-          </div>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                id="email"
-                type="email"
-                value={profile.email}
-                disabled
+    <>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Settings</h1>
+          <p className="text-muted-foreground">
+            Manage your account and profile settings.
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+            <CardDescription>Update your personal information.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-20 w-20">
+                <AvatarImage
+                  src={profile.avatarUrl || `https://placehold.co/80x80.png`}
+                  alt="User"
+                  data-ai-hint="person avatar"
                 />
+                <AvatarFallback>{profile.firstName?.[0] || 'U'}</AvatarFallback>
+              </Avatar>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handlePhotoChange}
+                className="hidden"
+                accept="image/*"
+              />
+              <Button variant="outline" onClick={handleChangePhotoClick}>
+                Change Photo
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" value={profile.phone || ''} onChange={handleInputChange} />
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="border-t px-6 py-4">
-          <Button onClick={handleSaveChanges}>Save Changes</Button>
-        </CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Two-Factor Authentication</CardTitle>
-          <CardDescription>
-            Add an extra layer of security to your account. It is highly
-            recommended.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="flex items-start gap-4">
-              <ShieldCheck className="h-6 w-6 text-muted-foreground mt-1" />
-              <div>
-                <Label
-                  htmlFor="authenticator-app"
-                  className="font-medium leading-none"
-                >
-                  Authenticator App
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Use an app like Google Authenticator or Authy.
-                </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input id="firstName" value={profile.firstName} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input id="lastName" value={profile.lastName} onChange={handleInputChange} />
               </div>
             </div>
-            <Switch id="authenticator-app" />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                  id="email"
+                  type="email"
+                  value={profile.email}
+                  disabled
+                  />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input id="phone" type="tel" value={profile.phone || ''} onChange={handleInputChange} />
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="border-t px-6 py-4">
+            <Button onClick={handleSaveChanges}>Save Changes</Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Two-Factor Authentication</CardTitle>
+            <CardDescription>
+              Add an extra layer of security to your account. It is highly
+              recommended.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="flex items-start gap-4">
+                <ShieldCheck className="h-6 w-6 text-muted-foreground mt-1" />
+                <div>
+                  <Label
+                    htmlFor="authenticator-app"
+                    className="font-medium leading-none"
+                  >
+                    Authenticator App
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Use an app like Google Authenticator or Authy.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="authenticator-app"
+                checked={!!profile.twoFactorEnabled}
+                onCheckedChange={handle2faToggle}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <TwoFactorForm
+        isOpen={is2faFormOpen}
+        onOpenChange={setIs2faFormOpen}
+        userProfile={profile}
+        onSuccess={fetchProfile}
+      />
+
+      <AlertDialog open={disable2faAlertOpen} onOpenChange={setDisable2faAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure you want to disable 2FA?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Disabling Two-Factor Authentication will reduce the security of your account.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDisable2fa}>Disable</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

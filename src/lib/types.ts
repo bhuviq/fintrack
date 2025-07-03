@@ -89,4 +89,6 @@ export interface UserProfile {
     email?: string;
     phone?: string;
     avatarUrl?: string;
+    twoFactorEnabled?: boolean;
+    twoFactorSecret?: string;
 }

@@ -1,9 +1,11 @@
+
 import { db, auth } from '@/lib/firebase';
 import type { Category, NewCategory } from '@/lib/types';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch, limit } from 'firebase/firestore';
 import { ALL_DEFAULT_CATEGORIES } from '@/lib/constants';
 
 const categoriesCollection = collection(db, 'categories');
+const defaultCategoriesCollection = collection(db, 'default-categories');
 
 const getUserId = () => {
     const user = auth.currentUser;
@@ -11,21 +13,55 @@ const getUserId = () => {
     return user.uid;
 };
 
+// Function to seed default categories if they don't exist
+const seedDefaultCategories = async () => {
+    const q = query(defaultCategoriesCollection, limit(1));
+    const snapshot = await getDocs(q);
+
+    // If the collection is not empty, seeding is already done.
+    if (!snapshot.empty) {
+        return;
+    }
+    
+    console.log("Seeding default categories into Firestore...");
+
+    const batch = writeBatch(db);
+    ALL_DEFAULT_CATEGORIES.forEach(category => {
+        // Firestore will auto-generate an ID for the new document
+        const newDocRef = doc(defaultCategoriesCollection); 
+        batch.set(newDocRef, category);
+    });
+
+    try {
+        await batch.commit();
+        console.log("Default categories successfully seeded.");
+    } catch (error) {
+        console.error("Error seeding default categories:", error);
+        // This might fail due to permissions, but the app should still try to function.
+        // The error will be surfaced to the user via the toast on the page.
+        throw error;
+    }
+};
+
 export const getCategories = async (): Promise<Category[]> => {
     const userId = getUserId();
-    
-    // Default categories are not stored in the database, they are constants.
-    // We mark them as `isDefault` so the UI can treat them as read-only.
-    const defaultCategories: Category[] = ALL_DEFAULT_CATEGORIES.map(cat => ({
-        ...cat,
-        id: `default-${cat.name.replace(/\s+/g, '-').toLowerCase()}`, // generate a stable ID
+
+    // This will attempt to seed the default categories only if the collection is empty.
+    // If it fails (e.g., due to rules), the promise will reject and the UI will show an error.
+    await seedDefaultCategories();
+
+    // Fetch default categories from Firestore
+    const defaultSnapshot = await getDocs(defaultCategoriesCollection);
+    const defaultCategories: Category[] = defaultSnapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id,
         isDefault: true,
-    }));
+    } as Category));
 
     // Fetch user-specific categories from Firestore
-    const q = query(categoriesCollection, where("userId", "==", userId));
-    const snapshot = await getDocs(q);
-    const userCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+    const userQuery = query(categoriesCollection, where("userId", "==", userId));
+    const userSnapshot = await getDocs(userQuery);
+    const userCategories = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
 
     // Combine and sort
     const allCategories = [...defaultCategories, ...userCategories];

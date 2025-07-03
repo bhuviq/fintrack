@@ -1,6 +1,6 @@
 import { db, auth } from '@/lib/firebase';
 import type { Category, NewCategory } from '@/lib/types';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc } from 'firebase/firestore';
 import { ALL_DEFAULT_CATEGORIES } from '@/lib/constants';
 
 const categoriesCollection = collection(db, 'categories');
@@ -11,42 +11,23 @@ const getUserId = () => {
     return user.uid;
 };
 
-// This function will ensure default categories exist in the database.
-const ensureDefaultCategories = async () => {
-    const defaultCategoriesQuery = query(categoriesCollection, where("userId", "==", "default"));
-    const snapshot = await getDocs(defaultCategoriesQuery);
-
-    if (snapshot.empty) {
-        // If no default categories, create them in a batch.
-        const batch = writeBatch(db);
-        ALL_DEFAULT_CATEGORIES.forEach(category => {
-            const docRef = doc(collection(db, 'categories')); // Auto-generate ID
-            batch.set(docRef, { ...category, userId: 'default' });
-        });
-        await batch.commit();
-    }
-};
-
 export const getCategories = async (): Promise<Category[]> => {
-    // This function runs a one-time check to seed the database with default categories if they don't exist.
-    // After the first run, it will simply fetch the categories from the database.
-    await ensureDefaultCategories();
-
     const userId = getUserId();
-
-    // Fetch both default and user-specific categories in parallel
-    const defaultCategoriesQuery = query(categoriesCollection, where("userId", "==", "default"));
     const userCategoriesQuery = query(categoriesCollection, where("userId", "==", userId));
-
-    const [defaultSnapshot, userSnapshot] = await Promise.all([
-        getDocs(defaultCategoriesQuery),
-        getDocs(userCategoriesQuery)
-    ]);
-
-    const defaultCategories = defaultSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+    
+    // Fetch user-specific categories from Firestore
+    const userSnapshot = await getDocs(userCategoriesQuery);
     const userCategories = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
     
-    // User categories should override defaults with the same name and type.
+    // Load hardcoded default categories
+    const defaultCategories: Category[] = ALL_DEFAULT_CATEGORIES.map((cat) => ({
+        ...cat,
+        // Use a unique but consistent client-side ID format
+        id: `default_${cat.name.replace(/\s+/g, '_')}_${cat.type}`,
+        userId: 'default'
+    }));
+
+    // Use a map to handle overrides: user categories replace defaults with the same name/type
     const combinedMap = new Map<string, Category>();
 
     defaultCategories.forEach(cat => {

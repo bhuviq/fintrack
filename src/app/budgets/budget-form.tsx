@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -31,11 +32,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Budget, Category } from '@/lib/types';
+import { useCurrency } from '@/context/currency-provider';
 
 const budgetSchema = z.object({
   id: z.string().optional(),
   category: z.string().min(1, { message: 'Please select a category.' }),
   total: z.coerce.number().positive({ message: 'Total must be a positive number.' }),
+  currency: z.enum(['USD', 'GBP', 'INR']),
 });
 
 export type BudgetFormValues = z.infer<typeof budgetSchema>;
@@ -57,11 +60,13 @@ export function BudgetForm({
   existingCategories,
   allCategories,
 }: BudgetFormProps) {
+  const { currency: globalCurrency } = useCurrency();
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetSchema),
     defaultValues: {
       category: '',
       total: undefined,
+      currency: globalCurrency,
     },
   });
 
@@ -76,15 +81,17 @@ export function BudgetForm({
           id: budget.id,
           category: budget.category,
           total: budget.total,
+          currency: budget.currency,
         });
       } else {
         form.reset({
           category: '',
           total: undefined,
+          currency: globalCurrency,
         });
       }
     }
-  }, [budget, form, isOpen]);
+  }, [budget, form, isOpen, globalCurrency]);
 
   const handleSubmit = (values: BudgetFormValues) => {
     onSubmit({ ...values, id: budget?.id });
@@ -137,24 +144,48 @@ export function BudgetForm({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="total"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monthly Budget Amount</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="e.g. 500"
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="total"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Budget Amount</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 500"
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Currency</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a currency" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="USD">USD ($)</SelectItem>
+                            <SelectItem value="GBP">GBP (£)</SelectItem>
+                            <SelectItem value="INR">INR (₹)</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+              />
+            </div>
             <SheetFooter>
               <SheetClose asChild>
                 <Button type="button" variant="outline">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -30,7 +31,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Account } from '@/lib/types';
+import type { Account, Currency } from '@/lib/types';
+import { useCurrency } from '@/context/currency-provider';
 
 
 const accountSchema = z.object({
@@ -40,6 +42,7 @@ const accountSchema = z.object({
   }),
   type: z.enum(['bank', 'credit-card']),
   balance: z.coerce.number(),
+  currency: z.enum(['USD', 'GBP', 'INR']),
   limit: z.coerce.number().positive().optional(),
   dueDate: z.coerce.number().min(1).max(31).optional(),
 });
@@ -59,12 +62,14 @@ export function AccountForm({
   account,
   onSubmit,
 }: AccountFormProps) {
+  const { currency: globalCurrency } = useCurrency();
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
     defaultValues: {
       name: '',
       type: 'bank',
       balance: 0,
+      currency: globalCurrency,
       limit: undefined,
       dueDate: undefined,
     },
@@ -80,6 +85,7 @@ export function AccountForm({
           name: account.name,
           type: account.type,
           balance: account.balance,
+          currency: account.currency,
           limit: account.type === 'credit-card' ? account.limit : undefined,
           dueDate: account.type === 'credit-card' ? account.dueDate : undefined,
         });
@@ -88,12 +94,13 @@ export function AccountForm({
           name: '',
           type: 'bank',
           balance: undefined,
+          currency: globalCurrency,
           limit: undefined,
           dueDate: undefined,
         });
       }
     }
-  }, [account, form, isOpen]);
+  }, [account, form, isOpen, globalCurrency]);
 
   const handleSubmit = (values: AccountFormValues) => {
     const submissionData = { ...values };
@@ -135,31 +142,55 @@ export function AccountForm({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Account Type</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={!!account}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an account type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="bank">Bank Account</SelectItem>
-                      <SelectItem value="credit-card">Credit Card</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Account Type</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={!!account}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an account type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="bank">Bank Account</SelectItem>
+                        <SelectItem value="credit-card">Credit Card</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Currency</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                          <SelectTrigger>
+                              <SelectValue placeholder="Select a currency" />
+                          </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                              <SelectItem value="USD">USD ($)</SelectItem>
+                              <SelectItem value="GBP">GBP (£)</SelectItem>
+                              <SelectItem value="INR">INR (₹)</SelectItem>
+                          </SelectContent>
+                      </Select>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                />
+            </div>
              <FormField
               control={form.control}
               name="balance"

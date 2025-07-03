@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -31,13 +32,12 @@ import { BudgetForm, type BudgetFormValues } from './budget-form';
 import { getBudgets, addBudget, updateBudget, deleteBudget } from '@/services/budgetService';
 import { getTransactions } from '@/services/transactionService';
 import { getCategories } from '@/services/categoryService';
-import type { Budget, Transaction, Category, NewBudget } from '@/lib/types';
+import type { Budget, Transaction, Category, NewBudget, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useCurrency } from '@/context/currency-provider';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -48,7 +48,6 @@ export default function BudgetsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
   const { toast } = useToast();
-  const { formatCurrency } = useCurrency();
 
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -165,6 +164,13 @@ export default function BudgetsPage() {
     if (value < 50) return 'bg-green-500';
     if (value < 80) return 'bg-yellow-500';
     return 'bg-red-500';
+  };
+
+  const formatAmount = (amount: number, currency: Currency) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
   };
 
   const calculatedBudgets = React.useMemo(() => {
@@ -312,14 +318,14 @@ export default function BudgetsPage() {
                 <div className="flex justify-between items-baseline">
                   <span className="font-semibold text-lg pr-10">{budget.category}</span>
                   <span className="text-sm font-medium text-muted-foreground">
-                    {formatCurrency(budget.spent)} / {formatCurrency(budget.total)}
+                    {formatAmount(budget.spent, budget.currency)} / {formatAmount(budget.total, budget.currency)}
                   </span>
                 </div>
                 <Progress value={percentage} indicatorClassName={getProgressColor(percentage)} />
                 <div className="flex justify-between items-baseline text-sm">
                   <span className="text-muted-foreground">{percentage.toFixed(0)}% spent</span>
                   <span className={`${remaining >= 0 ? 'text-green-600' : 'text-destructive'} font-medium`}>
-                    {formatCurrency(Math.abs(remaining))} {remaining >=0 ? 'left' : 'over'}
+                    {formatAmount(Math.abs(remaining), budget.currency)} {remaining >=0 ? 'left' : 'over'}
                   </span>
                 </div>
               </div>

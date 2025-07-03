@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -26,8 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Investment, InvestmentTransaction } from '@/lib/types';
-import { useCurrency } from '@/context/currency-provider';
+import type { Investment, InvestmentTransaction, Currency } from '@/lib/types';
 
 
 interface InvestmentHistorySheetProps {
@@ -47,11 +47,17 @@ export function InvestmentHistorySheet({
   onEditTransaction,
   onDeleteTransaction,
 }: InvestmentHistorySheetProps) {
-  const { formatCurrency } = useCurrency();
   
   if (!investment) {
     return null;
   }
+
+  const formatAmount = (amount: number, currency: Currency) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
+  };
 
   const renderTotalHoldings = (investment: Investment) => {
     const { category, history } = investment;
@@ -137,8 +143,8 @@ export function InvestmentHistorySheet({
                     {item.quantity.toLocaleString()}
                     {(item as InvestmentTransaction).unit ? ` ${(item as InvestmentTransaction).unit}` : ''}
                   </TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(item.price)}</TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(item.quantity * item.price)}</TableCell>
+                  <TableCell className="text-right font-medium">{formatAmount(item.price, investment.currency)}</TableCell>
+                  <TableCell className="text-right font-medium">{formatAmount(item.quantity * item.price, investment.currency)}</TableCell>
                   <TableCell>
                       <DropdownMenu>
                           <DropdownMenuTrigger asChild>

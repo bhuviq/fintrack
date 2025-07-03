@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -31,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Investment, Category } from '@/lib/types';
+import { useCurrency } from '@/context/currency-provider';
 
 
 const investmentSchema = z.object({
@@ -43,6 +45,7 @@ const investmentSchema = z.object({
   value: z.coerce
     .number()
     .positive({ message: 'Value must be a positive number.' }),
+  currency: z.enum(['USD', 'GBP', 'INR']),
 });
 
 export type InvestmentFormValues = z.infer<typeof investmentSchema>;
@@ -63,6 +66,7 @@ export function InvestmentForm({
   onSubmit,
   availableCategories,
 }: InvestmentFormProps) {
+  const { currency: globalCurrency } = useCurrency();
   const form = useForm<InvestmentFormValues>({
     resolver: zodResolver(investmentSchema),
     defaultValues: {
@@ -70,6 +74,7 @@ export function InvestmentForm({
       category: '',
       symbol: '',
       value: undefined,
+      currency: globalCurrency,
     },
   });
 
@@ -88,6 +93,7 @@ export function InvestmentForm({
           category: investment.category,
           symbol: investment.symbol,
           value: investment.value,
+          currency: investment.currency,
         });
       } else {
         form.reset({
@@ -95,10 +101,11 @@ export function InvestmentForm({
           category: '',
           symbol: '',
           value: undefined,
+          currency: globalCurrency,
         });
       }
     }
-  }, [investment, form, isOpen]);
+  }, [investment, form, isOpen, globalCurrency]);
 
   const handleSubmit = (values: InvestmentFormValues) => {
     onSubmit({ ...values, id: investment?.id });
@@ -176,24 +183,48 @@ export function InvestmentForm({
                 </FormItem>
               )}
             />}
-             <FormField
-              control={form.control}
-              name="value"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Current Value</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="e.g. 25000.50"
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current Value</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 25000.50"
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Currency</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                          <SelectTrigger>
+                              <SelectValue placeholder="Select a currency" />
+                          </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                              <SelectItem value="USD">USD ($)</SelectItem>
+                              <SelectItem value="GBP">GBP (£)</SelectItem>
+                              <SelectItem value="INR">INR (₹)</SelectItem>
+                          </SelectContent>
+                      </Select>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                />
+            </div>
             <SheetFooter>
               <SheetClose asChild>
                 <Button type="button" variant="outline">

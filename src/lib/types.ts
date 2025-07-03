@@ -7,6 +7,7 @@ export interface Account {
   name: string;
   type: 'bank' | 'credit-card';
   balance: number;
+  currency: Currency;
   limit?: number;
   dueDate?: number;
 }
@@ -42,6 +43,7 @@ export interface Budget {
     userId: string;
     category: string;
     total: number;
+    currency: Currency;
 }
 export type NewBudget = Omit<Budget, 'id' | 'userId'>;
 
@@ -53,7 +55,7 @@ export interface GoalContribution {
 }
 
 export interface Goal {
-    id: string;
+    id:string;
     userId: string;
     name: string;
     target: number;
@@ -82,6 +84,7 @@ export interface Investment {
     change: number;
     changeAmount: number;
     category: string;
+    currency: Currency;
     history: InvestmentTransaction[];
 }
 export type NewInvestment = Omit<Investment, 'id'|'userId'| 'change' | 'changeAmount' | 'history'>;

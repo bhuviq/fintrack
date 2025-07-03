@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -27,13 +28,12 @@ import { AccountForm, type AccountFormValues } from './account-form';
 import { Progress } from '@/components/ui/progress';
 import { getAccounts, addAccount, updateAccount, deleteAccount } from '@/services/accountService';
 import { getTransactions, deleteTransaction } from '@/services/transactionService';
-import type { Account, Transaction, NewAccount } from '@/lib/types';
+import type { Account, Transaction, NewAccount, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useCurrency } from '@/context/currency-provider';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = React.useState<Account[]>([]);
@@ -41,7 +41,6 @@ export default function AccountsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
   const { toast } = useToast();
-  const { formatCurrency } = useCurrency();
 
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [editingAccount, setEditingAccount] = React.useState<Account | null>(null);
@@ -151,9 +150,16 @@ export default function AccountsPage() {
     setEditingAccount(null);
   };
 
-  const formatBalance = (balance: number) => {
+  const formatAmount = (amount: number, currency: Currency) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
+  };
+
+  const formatBalance = (balance: number, currency: Currency) => {
     const color = balance >= 0 ? 'text-green-600' : 'text-red-600';
-    return <span className={color}>{formatCurrency(balance)}</span>
+    return <span className={color}>{formatAmount(balance, currency)}</span>
   }
   
   const getProgressColor = (value: number) => {
@@ -249,8 +255,8 @@ export default function AccountsPage() {
                     <CardContent className="flex-1 space-y-4">
                       <div>
                         <p className="text-sm text-muted-foreground">Outstanding</p>
-                        <p className="text-2xl font-bold">{formatCurrency(Math.abs(account.currentBalance))}</p>
-                        <p className="text-sm text-muted-foreground">of {formatCurrency(account.limit || 0)} limit</p>
+                        <p className="text-2xl font-bold">{formatAmount(Math.abs(account.currentBalance), account.currency)}</p>
+                        <p className="text-sm text-muted-foreground">of {formatAmount(account.limit || 0, account.currency)} limit</p>
                       </div>
                       <div>
                         <div className="flex justify-between text-sm mb-1">
@@ -296,7 +302,7 @@ export default function AccountsPage() {
                                 <TableCell>
                                     <Badge variant={'secondary'}>Bank Account</Badge>
                                 </TableCell>
-                                <TableCell className="text-right font-medium">{formatBalance(account.currentBalance)}</TableCell>
+                                <TableCell className="text-right font-medium">{formatBalance(account.currentBalance, account.currency)}</TableCell>
                                 <TableCell>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>

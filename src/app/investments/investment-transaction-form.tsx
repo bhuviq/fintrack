@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -33,7 +34,7 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import type { InvestmentTransaction } from '@/lib/types';
+import type { InvestmentTransaction, Currency } from '@/lib/types';
 
 import {
   Select,
@@ -64,6 +65,7 @@ interface InvestmentTransactionFormProps {
   onOpenChange: (isOpen: boolean) => void;
   onSubmit: (data: InvestmentTransactionFormValues, index?: number) => void;
   investmentCategory?: string;
+  investmentCurrency?: Currency;
   transaction?: InvestmentTransaction;
   transactionIndex?: number;
 }
@@ -73,6 +75,7 @@ export function InvestmentTransactionForm({
   onOpenChange,
   onSubmit,
   investmentCategory,
+  investmentCurrency,
   transaction,
   transactionIndex,
 }: InvestmentTransactionFormProps) {
@@ -278,7 +281,7 @@ export function InvestmentTransactionForm({
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Price per unit</FormLabel>
+                  <FormLabel>Price per unit (in {investmentCurrency})</FormLabel>
                   <FormControl>
                     <Input
                       type="number"

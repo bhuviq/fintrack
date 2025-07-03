@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -34,7 +35,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { getInvestments, addInvestment, updateInvestment, deleteInvestment, addInvestmentTransaction, updateInvestmentTransaction, deleteInvestmentTransaction } from '@/services/investmentService';
 import { getCategories } from '@/services/categoryService';
-import type { Investment, InvestmentTransaction, Category, NewInvestment } from '@/lib/types';
+import type { Investment, InvestmentTransaction, Category, NewInvestment, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -50,7 +51,7 @@ export default function InvestmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency: formatGlobalCurrency } = useCurrency();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
@@ -141,8 +142,17 @@ export default function InvestmentsPage() {
     setCurrentPage(1); // Reset page on tab change
   }
 
+  // NOTE: This sums up values from different currencies without conversion.
+  // This is a simplification. A real-world app would need currency conversion rates.
   const totalValue = filteredInvestments.reduce((acc, investment) => acc + investment.value, 0);
   const totalChange = filteredInvestments.reduce((acc, investment) => acc + investment.changeAmount, 0);
+
+  const formatAmount = (amount: number, currency: Currency) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
+  };
 
   const handleAddInvestment = () => {
     setEditingInvestment(null);
@@ -395,13 +405,13 @@ export default function InvestmentsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <p className="text-sm text-muted-foreground">Total Portfolio Value</p>
-              <p className="text-3xl font-bold">{formatCurrency(totalValue)}</p>
+              <p className="text-3xl font-bold">{formatGlobalCurrency(totalValue)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Today's Change</p>
               <div className={`flex items-center text-3xl font-bold ${totalChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {totalChange >= 0 ? <ArrowUp className="h-7 w-7" /> : <ArrowDown className="h-7 w-7" />}
-                {formatCurrency(Math.abs(totalChange))}
+                {formatGlobalCurrency(Math.abs(totalChange))}
               </div>
             </div>
           </div>
@@ -433,7 +443,7 @@ export default function InvestmentsPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>
                   <TableCell className="text-right font-medium">{formatQuantity(investment)}</TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(investment.value)}</TableCell>
+                  <TableCell className="text-right font-medium">{formatAmount(investment.value, investment.currency)}</TableCell>
                   <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     <div className="flex items-center justify-end">
                       {investment.change >= 0 ? <ArrowUp className="h-4 w-4 mr-1" /> : <ArrowDown className="h-4 w-4 mr-1" />}
@@ -515,6 +525,7 @@ export default function InvestmentsPage() {
         onOpenChange={setIsTransactionSheetOpen}
         onSubmit={handleSaveInvestmentTransaction}
         investmentCategory={historyInvestment?.category}
+        investmentCurrency={historyInvestment?.currency}
         transaction={editingTransaction?.transaction}
         transactionIndex={editingTransaction?.index}
        />

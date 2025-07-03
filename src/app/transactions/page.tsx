@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -47,7 +48,7 @@ import { cn } from '@/lib/utils';
 import { getTransactions, addTransaction, updateTransaction, deleteTransaction } from '@/services/transactionService';
 import { getAccounts } from '@/services/accountService';
 import { getCategories } from '@/services/categoryService';
-import type { Transaction, Account, Category, NewTransaction } from '@/lib/types';
+import type { Transaction, Account, Category, NewTransaction, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -65,7 +66,7 @@ export default function TransactionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
-  const { formatCurrency } = useCurrency();
+  const { currency: globalCurrency } = useCurrency();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -109,7 +110,7 @@ export default function TransactionsPage() {
     return () => unsubscribe();
   }, [router, fetchData]);
   
-  const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc.name])), [accounts]);
+  const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
 
   const filteredTransactions = useMemo(() => {
     let items = [...transactions];
@@ -178,6 +179,13 @@ export default function TransactionsPage() {
     }
     setIsSheetOpen(false);
     setEditingTransaction(null);
+  };
+
+  const formatAmount = (amount: number, currency: Currency) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
   };
   
   if (isLoading) {
@@ -283,71 +291,75 @@ export default function TransactionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedTransactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell className="text-muted-foreground">
-                    {format(new Date(transaction.date), 'MMM d, yyyy')}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                          transaction.type === 'income'
-                            ? 'bg-green-100 dark:bg-green-900'
-                            : 'bg-red-100 dark:bg-red-900'
-                        }`}
-                      >
-                        {transaction.type === 'income' ? (
-                          <ArrowUpRight className="h-4 w-4 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <ArrowDownLeft className="h-4 w-4 text-red-600 dark:text-red-400" />
-                        )}
-                      </div>
-                      <span className="font-medium">
-                        {transaction.description}
-                      </span>
-                    </div>
-                  </TableCell>
-                   <TableCell>
-                    <Badge variant="secondary">{accountMap.get(transaction.accountId) || 'N/A'}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{transaction.category}</Badge>
-                  </TableCell>
-                  <TableCell
-                    className={`text-right font-medium ${
-                      transaction.type === 'income'
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {transaction.type === 'income' ? '+' : '-'}
-                    {formatCurrency(transaction.amount)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem
-                          onClick={() => handleEditTransaction(transaction)}
+              {paginatedTransactions.map((transaction) => {
+                const account = accountMap.get(transaction.accountId);
+                const currency = account ? account.currency : globalCurrency;
+                return (
+                  <TableRow key={transaction.id}>
+                    <TableCell className="text-muted-foreground">
+                      {format(new Date(transaction.date), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                            transaction.type === 'income'
+                              ? 'bg-green-100 dark:bg-green-900'
+                              : 'bg-red-100 dark:bg-red-900'
+                          }`}
                         >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTransaction(transaction)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                          {transaction.type === 'income' ? (
+                            <ArrowUpRight className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <ArrowDownLeft className="h-4 w-4 text-red-600 dark:text-red-400" />
+                          )}
+                        </div>
+                        <span className="font-medium">
+                          {transaction.description}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{account?.name || 'N/A'}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{transaction.category}</Badge>
+                    </TableCell>
+                    <TableCell
+                      className={`text-right font-medium ${
+                        transaction.type === 'income'
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }`}
+                    >
+                      {transaction.type === 'income' ? '+' : '-'}
+                      {formatAmount(transaction.amount, currency)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem
+                            onClick={() => handleEditTransaction(transaction)}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTransaction(transaction)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )
+            })}
             </TableBody>
           </Table>
           {totalPages > 1 && (

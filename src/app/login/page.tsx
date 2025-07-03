@@ -18,6 +18,7 @@ import { Wallet } from 'lucide-react';
 export default function LoginPage() {
   const [step, setStep] = React.useState<'email' | 'otp'>('email');
   const [email, setEmail] = React.useState('');
+  const [otp, setOtp] = React.useState('');
   const router = useRouter();
 
   const handleSendOtp = (e: React.FormEvent) => {
@@ -75,7 +76,14 @@ export default function LoginPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="otp">One-Time Password</Label>
-                <Input id="otp" type="text" required placeholder="_ _ _ _ _ _" />
+                <Input
+                  id="otp"
+                  type="text"
+                  required
+                  placeholder="_ _ _ _ _ _"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                />
               </div>
             </CardContent>
             <CardFooter className="flex-col gap-4">

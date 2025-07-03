@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import { MOCK_DATA } from '@/lib/data';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -22,13 +21,6 @@ import { GoalHistorySheet } from './goal-history-sheet';
 
 type Goal = (typeof MOCK_DATA.goals)[0];
 type GoalHistoryItem = Goal['history'][0];
-
-const goalImages = [
-  'https://placehold.co/600x400.png',
-  'https://placehold.co/600x400.png',
-  'https://placehold.co/600x400.png',
-];
-const goalHints = ['vacation japan', 'new car', 'emergency savings'];
 
 export default function GoalsPage() {
   const [goals, setGoals] = React.useState<Goal[]>(MOCK_DATA.goals);
@@ -149,50 +141,40 @@ export default function GoalsPage() {
         </Button>
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {goals.map((goal, index) => {
+        {goals.map((goal) => {
           const currentAmount = goal.history.reduce((acc, item) => acc + item.amount, 0);
           const percentage = goal.target > 0 ? (currentAmount / goal.target) * 100 : 0;
 
           return (
-            <Card key={goal.id} className="flex flex-col group">
-              <CardHeader className="p-0 relative">
-                <Image
-                  src={goalImages[index % goalImages.length]}
-                  alt={goal.name}
-                  width={600}
-                  height={400}
-                  className="rounded-t-lg object-cover aspect-[3/2]"
-                  data-ai-hint={goalHints[index % goalHints.length]}
-                />
-                 <div className="absolute top-2 right-2">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="secondary" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handleAddContribution(goal)}>
-                                <Landmark className="mr-2 h-4 w-4" />
-                                Add Funds
-                            </DropdownMenuItem>
-                             <DropdownMenuItem onClick={() => handleViewHistory(goal)}>
-                                <History className="mr-2 h-4 w-4" />
-                                View History
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleEditGoal(goal)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteGoal(goal)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-              </CardHeader>
+            <Card key={goal.id} className="flex flex-col group relative">
+               <div className="absolute top-2 right-2 z-10">
+                  <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                              <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => handleAddContribution(goal)}>
+                              <Landmark className="mr-2 h-4 w-4" />
+                              Add Funds
+                          </DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => handleViewHistory(goal)}>
+                              <History className="mr-2 h-4 w-4" />
+                              View History
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleEditGoal(goal)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteGoal(goal)}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                          </DropdownMenuItem>
+                      </DropdownMenuContent>
+                  </DropdownMenu>
+              </div>
               <CardContent className="flex-1 p-6">
                 <CardTitle className="mb-2">{goal.name}</CardTitle>
                 <p className="text-2xl font-bold text-primary">

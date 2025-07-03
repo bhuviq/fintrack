@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Goal } from '@/lib/types';
+import { useCurrency } from '@/context/currency-provider';
 
 
 interface GoalHistorySheetProps {
@@ -35,6 +36,8 @@ export function GoalHistorySheet({
   goal,
   onDeleteContribution,
 }: GoalHistorySheetProps) {
+  const { formatCurrency } = useCurrency();
+  
   if (!goal) {
     return null;
   }
@@ -68,7 +71,7 @@ export function GoalHistorySheet({
                       {format(new Date(item.date), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      ${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatCurrency(item.amount)}
                     </TableCell>
                     <TableCell>
                       <Button

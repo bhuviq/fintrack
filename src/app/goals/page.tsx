@@ -24,6 +24,7 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrency } from '@/context/currency-provider';
 
 
 export default function GoalsPage() {
@@ -31,6 +32,7 @@ export default function GoalsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
   const { toast } = useToast();
+  const { formatCurrency } = useCurrency();
 
   const [isGoalFormOpen, setIsGoalFormOpen] = React.useState(false);
   const [isContributionFormOpen, setIsContributionFormOpen] = React.useState(false);
@@ -243,10 +245,10 @@ export default function GoalsPage() {
               <CardContent className="flex-1 p-6">
                 <CardTitle className="mb-2 pr-10">{goal.name}</CardTitle>
                 <p className="text-2xl font-bold text-primary">
-                  ${currentAmount.toLocaleString()}
+                  {formatCurrency(currentAmount)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  saved of ${goal.target.toLocaleString()}
+                  saved of {formatCurrency(goal.target)}
                 </p>
               </CardContent>
               <CardFooter className="p-6 pt-0">

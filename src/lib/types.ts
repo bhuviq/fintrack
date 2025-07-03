@@ -92,4 +92,5 @@ export interface UserProfile {
     avatarUrl?: string;
     twoFactorEnabled?: boolean;
     twoFactorSecret?: string;
+    currency?: 'USD' | 'GBP' | 'INR';
 }

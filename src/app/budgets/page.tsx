@@ -37,6 +37,7 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrency } from '@/context/currency-provider';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -47,6 +48,7 @@ export default function BudgetsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
   const { toast } = useToast();
+  const { formatCurrency } = useCurrency();
 
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -310,14 +312,14 @@ export default function BudgetsPage() {
                 <div className="flex justify-between items-baseline">
                   <span className="font-semibold text-lg pr-10">{budget.category}</span>
                   <span className="text-sm font-medium text-muted-foreground">
-                    ${budget.spent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ${budget.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatCurrency(budget.spent)} / {formatCurrency(budget.total)}
                   </span>
                 </div>
                 <Progress value={percentage} indicatorClassName={getProgressColor(percentage)} />
                 <div className="flex justify-between items-baseline text-sm">
                   <span className="text-muted-foreground">{percentage.toFixed(0)}% spent</span>
                   <span className={`${remaining >= 0 ? 'text-green-600' : 'text-destructive'} font-medium`}>
-                    ${Math.abs(remaining).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {remaining >=0 ? 'left' : 'over'}
+                    {formatCurrency(Math.abs(remaining))} {remaining >=0 ? 'left' : 'over'}
                   </span>
                 </div>
               </div>

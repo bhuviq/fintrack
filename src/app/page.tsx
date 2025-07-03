@@ -45,6 +45,7 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrency } from '@/context/currency-provider';
 
 export default function DashboardPage() {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
@@ -54,6 +55,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
   const { toast } = useToast();
+  const { formatCurrency } = useCurrency();
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -218,11 +220,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                $
-                {card.amount.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {formatCurrency(card.amount)}
               </div>
             </CardContent>
           </Card>
@@ -252,7 +250,7 @@ export default function DashboardPage() {
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => formatCurrency(value as number).replace(/\.00$/, '')}
                 />
                 <Tooltip
                   cursor={{ fill: 'hsl(var(--muted))' }}
@@ -260,6 +258,7 @@ export default function DashboardPage() {
                     backgroundColor: 'hsl(var(--card))',
                     borderColor: 'hsl(var(--border))',
                   }}
+                  formatter={(value) => formatCurrency(value as number)}
                 />
                 <Bar
                   dataKey="value"
@@ -320,8 +319,8 @@ export default function DashboardPage() {
                           : 'text-red-600'
                       }`}
                     >
-                      {transaction.type === 'income' ? '+' : '-'}$
-                      {transaction.amount.toLocaleString()}
+                      {transaction.type === 'income' ? '+' : '-'}
+                      {formatCurrency(transaction.amount)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -344,8 +343,7 @@ export default function DashboardPage() {
               <div className="flex justify-between">
                 <span className="font-medium">{goal.name}</span>
                 <span className="text-sm text-muted-foreground">
-                  ${goal.current.toLocaleString()} / $
-                  {goal.target.toLocaleString()}
+                  {formatCurrency(goal.current)} / {formatCurrency(goal.target)}
                 </span>
               </div>
               <Progress value={(goal.current / goal.target) * 100} />

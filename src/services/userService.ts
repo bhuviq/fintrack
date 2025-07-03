@@ -32,6 +32,7 @@ export const createUserProfileAndSeedData = async (user: any): Promise<void> => 
         lastName: lastName || '',
         email: user.email!,
         avatarUrl: user.photoURL || '',
+        currency: 'USD',
     };
     
     await setDoc(userDocRef, newProfile);

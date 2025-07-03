@@ -1,21 +1,14 @@
 
-'use client';
-
 import './globals.css';
-import { Toaster } from '@/components/ui/toaster';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/app-sidebar';
-import { Header } from '@/components/header';
-import { usePathname } from 'next/navigation';
+import { CurrencyProvider } from '@/context/currency-provider';
+import { AppContent } from '@/components/app-content';
+import * as React from 'react';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-  const isAuthPage = pathname === '/login' || pathname === '/welcome';
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -29,23 +22,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        {isAuthPage ? (
-          <>
-            {children}
-            <Toaster />
-          </>
-        ) : (
-          <SidebarProvider>
-              <AppSidebar />
-              <SidebarInset>
-                <Header />
-                <main className="p-4 sm:p-6 lg:p-8 bg-background">
-                  {children}
-                </main>
-              </SidebarInset>
-            <Toaster />
-          </SidebarProvider>
-        )}
+        <CurrencyProvider>
+          <AppContent>{children}</AppContent>
+        </CurrencyProvider>
       </body>
     </html>
   );

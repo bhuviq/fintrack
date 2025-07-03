@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { Investment, InvestmentTransaction } from '@/lib/types';
+import { useCurrency } from '@/context/currency-provider';
 
 
 interface InvestmentHistorySheetProps {
@@ -46,6 +47,8 @@ export function InvestmentHistorySheet({
   onEditTransaction,
   onDeleteTransaction,
 }: InvestmentHistorySheetProps) {
+  const { formatCurrency } = useCurrency();
+  
   if (!investment) {
     return null;
   }
@@ -134,8 +137,8 @@ export function InvestmentHistorySheet({
                     {item.quantity.toLocaleString()}
                     {(item as InvestmentTransaction).unit ? ` ${(item as InvestmentTransaction).unit}` : ''}
                   </TableCell>
-                  <TableCell className="text-right font-medium">${item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                  <TableCell className="text-right font-medium">${(item.quantity * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell className="text-right font-medium">{formatCurrency(item.price)}</TableCell>
+                  <TableCell className="text-right font-medium">{formatCurrency(item.quantity * item.price)}</TableCell>
                   <TableCell>
                       <DropdownMenu>
                           <DropdownMenuTrigger asChild>

@@ -40,6 +40,7 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrency } from '@/context/currency-provider';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -49,6 +50,7 @@ export default function InvestmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
+  const { formatCurrency } = useCurrency();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
@@ -393,13 +395,13 @@ export default function InvestmentsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <p className="text-sm text-muted-foreground">Total Portfolio Value</p>
-              <p className="text-3xl font-bold">${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-3xl font-bold">{formatCurrency(totalValue)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Today's Change</p>
               <div className={`flex items-center text-3xl font-bold ${totalChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {totalChange >= 0 ? <ArrowUp className="h-7 w-7" /> : <ArrowDown className="h-7 w-7" />}
-                ${Math.abs(totalChange).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatCurrency(Math.abs(totalChange))}
               </div>
             </div>
           </div>
@@ -431,7 +433,7 @@ export default function InvestmentsPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>
                   <TableCell className="text-right font-medium">{formatQuantity(investment)}</TableCell>
-                  <TableCell className="text-right font-medium">${investment.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell className="text-right font-medium">{formatCurrency(investment.value)}</TableCell>
                   <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     <div className="flex items-center justify-end">
                       {investment.change >= 0 ? <ArrowUp className="h-4 w-4 mr-1" /> : <ArrowDown className="h-4 w-4 mr-1" />}

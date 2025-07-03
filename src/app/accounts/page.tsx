@@ -33,6 +33,7 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrency } from '@/context/currency-provider';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = React.useState<Account[]>([]);
@@ -40,6 +41,7 @@ export default function AccountsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const router = useRouter();
   const { toast } = useToast();
+  const { formatCurrency } = useCurrency();
 
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [editingAccount, setEditingAccount] = React.useState<Account | null>(null);
@@ -151,7 +153,7 @@ export default function AccountsPage() {
 
   const formatBalance = (balance: number) => {
     const color = balance >= 0 ? 'text-green-600' : 'text-red-600';
-    return <span className={color}>${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+    return <span className={color}>{formatCurrency(balance)}</span>
   }
   
   const getProgressColor = (value: number) => {
@@ -247,8 +249,8 @@ export default function AccountsPage() {
                     <CardContent className="flex-1 space-y-4">
                       <div>
                         <p className="text-sm text-muted-foreground">Outstanding</p>
-                        <p className="text-2xl font-bold">${Math.abs(account.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                        <p className="text-sm text-muted-foreground">of ${account.limit?.toLocaleString()} limit</p>
+                        <p className="text-2xl font-bold">{formatCurrency(Math.abs(account.currentBalance))}</p>
+                        <p className="text-sm text-muted-foreground">of {formatCurrency(account.limit || 0)} limit</p>
                       </div>
                       <div>
                         <div className="flex justify-between text-sm mb-1">

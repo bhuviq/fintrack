@@ -15,6 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ShieldCheck } from 'lucide-react';
 import { getUserProfile, updateUserProfile } from '@/services/userService';
 import type { UserProfile } from '@/lib/types';
@@ -26,10 +33,12 @@ import { useRouter } from 'next/navigation';
 import { TwoFactorForm } from './two-factor-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CropImageDialog } from './crop-image-dialog';
+import { useCurrency, type Currency } from '@/context/currency-provider';
 
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { setCurrency } = useCurrency();
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [is2faFormOpen, setIs2faFormOpen] = React.useState(false);
@@ -92,6 +101,12 @@ export default function SettingsPage() {
     }
   }
 
+  const handleCurrencyChange = (value: string) => {
+    if (profile) {
+      setProfile({ ...profile, currency: value as Currency });
+    }
+  };
+
   const handleSaveChanges = async () => {
     if (!profile) return;
     try {
@@ -100,7 +115,11 @@ export default function SettingsPage() {
             lastName: profile.lastName,
             avatarUrl: profile.avatarUrl,
             phone: profile.phone,
+            currency: profile.currency,
         });
+        if(profile.currency) {
+            setCurrency(profile.currency);
+        }
         toast({
             title: "Success",
             description: "Your profile has been updated.",
@@ -242,6 +261,22 @@ export default function SettingsPage() {
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input id="phone" type="tel" value={profile.phone || ''} onChange={handleInputChange} />
               </div>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="currency">Currency</Label>
+                <Select
+                    value={profile.currency || 'USD'}
+                    onValueChange={handleCurrencyChange}
+                >
+                    <SelectTrigger id="currency">
+                    <SelectValue placeholder="Select a currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    <SelectItem value="USD">USD - United States Dollar ($)</SelectItem>
+                    <SelectItem value="GBP">GBP - British Pound (£)</SelectItem>
+                    <SelectItem value="INR">INR - Indian Rupee (₹)</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4">

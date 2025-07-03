@@ -53,6 +53,7 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrency } from '@/context/currency-provider';
 
 
 const ITEMS_PER_PAGE = 10;
@@ -64,6 +65,7 @@ export default function TransactionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
+  const { formatCurrency } = useCurrency();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -319,11 +321,8 @@ export default function TransactionsPage() {
                         : 'text-red-600'
                     }`}
                   >
-                    {transaction.type === 'income' ? '+' : '-'}$
-                    {transaction.amount.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    {transaction.type === 'income' ? '+' : '-'}
+                    {formatCurrency(transaction.amount)}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

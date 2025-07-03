@@ -125,7 +125,6 @@ export function BudgetForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {budget && <SelectItem value={budget.category}>{budget.category}</SelectItem>}
                       {availableCategories.map((category) => (
                         <SelectItem key={category.id} value={category.name}>
                           {category.name}

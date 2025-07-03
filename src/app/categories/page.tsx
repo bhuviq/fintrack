@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -152,11 +153,21 @@ export default function CategoriesPage() {
                       <li key={category.id} className="flex items-center justify-between p-4 hover:bg-muted/50">
                         <span className="font-medium">{category.name}</span>
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleEditCategory(category)}
+                            disabled={category.userId === 'default'}
+                          >
                             <Edit className="h-4 w-4" />
                             <span className="sr-only">Edit</span>
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeleteCategory(category.id)}
+                            disabled={category.userId === 'default'}
+                          >
                             <Trash2 className="h-4 w-4 text-destructive" />
                             <span className="sr-only">Delete</span>
                           </Button>

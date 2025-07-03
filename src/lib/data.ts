@@ -127,27 +127,38 @@ export const MOCK_DATA = {
       name: 'Vacation to Japan',
       current: 3500,
       target: 8000,
+      history: [
+        { id: 1, date: '2024-05-15', amount: 1500 },
+        { id: 2, date: '2024-06-20', amount: 2000 },
+      ],
     },
     {
       id: 2,
       name: 'New Car Down Payment',
       current: 8000,
       target: 10000,
+      history: [
+        { id: 1, date: '2024-01-01', amount: 8000 },
+      ],
     },
     {
       id: 3,
       name: 'Emergency Fund',
       current: 15000,
       target: 20000,
+      history: [
+        { id: 1, date: '2023-12-01', amount: 10000 },
+        { id: 2, date: '2024-04-01', amount: 5000 },
+      ],
     },
   ],
   investments: [
     { id: 1, name: 'Apple Inc.', symbol: 'AAPL', value: 25000.50, change: 1.2, changeAmount: 297.01, category: 'Stocks', history: [{ date: '2023-01-15', type: 'buy', quantity: 100, price: 150.00 }, { date: '2024-03-10', type: 'sell', quantity: 25, price: 180.00 }] },
     { id: 2, name: 'Tesla, Inc.', symbol: 'TSLA', value: 15000.75, change: -0.5, changeAmount: -75.38, category: 'Stocks', history: [{ date: '2023-05-20', type: 'buy', quantity: 50, price: 200.00 }] },
-    { id: 3, name: 'Vanguard S&P 500 ETF', symbol: 'VOO', value: 32110.30, change: 0.8, changeAmount: 254.84, category: 'Mutual Funds', history: [{ date: '2022-11-01', type: 'buy', quantity: 70, price: 350.00 }] },
+    { id: 3, name: 'Vanguard S&P 500 ETF', symbol: 'VOO', value: 32110.30, change: 0.8, changeAmount: 254.84, category: 'Mutual Funds', history: [{ date: '2022-11-01', type: 'buy', quantity: 70.5, price: 350.00 }] },
     { id: 4, name: 'Downtown Apartment', symbol: '', value: 250000, change: 0, changeAmount: 0, category: 'Real Estate', history: [{ date: '2021-08-01', type: 'buy', quantity: 1, price: 220000.00 }] },
     { id: 5, name: 'US Treasury Bond', symbol: 'US10Y', value: 10000, change: 0.1, changeAmount: 10, category: 'Bonds', history: [{ date: '2024-01-01', type: 'buy', quantity: 10, price: 990.00 }] },
-    { id: 6, name: '1oz Gold Bar', symbol: 'XAU', value: 2350.00, change: 0.7, changeAmount: 16.45, category: 'Gold', history: [{ date: '2023-09-09', type: 'buy', quantity: 1, price: 1980.50, unit: 'oz' }] },
+    { id: 6, name: '1oz Gold Bar', symbol: 'XAU', value: 2350.00, change: 0.7, changeAmount: 16.45, category: 'Gold', history: [{ date: '2023-09-09', type: 'buy', quantity: 1, price: 1980.50, unit: 'oz' }, { date: '2024-02-15', type: 'buy', quantity: 10, price: 65.50, unit: 'gm' }] },
   ],
   budgets: [
     { id: 1, category: 'Groceries', spent: 450, total: 800 },

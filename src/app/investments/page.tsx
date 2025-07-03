@@ -23,8 +23,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowUp, ArrowDown, MoreHorizontal, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, MoreHorizontal, PlusCircle, Edit, Trash2, History } from 'lucide-react';
 import { InvestmentForm, type InvestmentFormValues } from './investment-form';
+import { InvestmentHistorySheet } from './investment-history-sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Investment = (typeof MOCK_DATA.investments)[0];
@@ -36,6 +37,7 @@ export default function InvestmentsPage() {
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [investmentToDelete, setInvestmentToDelete] = useState<Investment | null>(null);
   const [activeTab, setActiveTab] = useState('All');
+  const [historyInvestment, setHistoryInvestment] = useState<Investment | null>(null);
 
   const investmentCategories = useMemo(
     () => MOCK_DATA.categories.filter((c) => c.type === 'investment'),
@@ -70,6 +72,10 @@ export default function InvestmentsPage() {
   const handleDeleteInvestment = (investment: Investment) => {
     setInvestmentToDelete(investment);
     setDeleteAlertOpen(true);
+  };
+
+  const handleViewHistory = (investment: Investment) => {
+    setHistoryInvestment(investment);
   };
 
   const confirmDelete = () => {
@@ -118,6 +124,7 @@ export default function InvestmentsPage() {
         value: Number(data.value),
         change: 0,
         changeAmount: 0,
+        history: [], // New investments start with empty history
       };
       setInvestments([newInvestment, ...investments]);
     }
@@ -210,11 +217,15 @@ export default function InvestmentsPage() {
                               </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
+                              <DropdownMenuItem onClick={() => handleViewHistory(investment)}>
+                                  <History className="mr-2 h-4 w-4" />
+                                  View History
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleEditInvestment(investment)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteInvestment(investment)}>
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Delete
@@ -234,6 +245,11 @@ export default function InvestmentsPage() {
         investment={editingInvestment}
         onSubmit={handleSaveInvestment}
         availableCategories={investmentCategories}
+      />
+      <InvestmentHistorySheet
+        investment={historyInvestment}
+        isOpen={!!historyInvestment}
+        onOpenChange={(isOpen) => !isOpen && setHistoryInvestment(null)}
       />
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>

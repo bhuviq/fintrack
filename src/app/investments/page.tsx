@@ -254,13 +254,16 @@ export default function InvestmentsPage() {
   const handleSaveInvestmentTransaction = async (data: InvestmentTransactionFormValues, index?: number) => {
     if (!historyInvestment) return;
     try {
-        const newTransactionData = {
+        const newTransactionData: Omit<InvestmentTransaction, 'id'> = {
             date: format(data.date, 'yyyy-MM-dd'),
             type: data.type,
             quantity: Number(data.quantity),
             price: Number(data.price),
-            unit: data.unit,
         };
+
+        if (data.unit) {
+            (newTransactionData as InvestmentTransaction).unit = data.unit;
+        }
 
         if (index !== undefined) {
             await updateInvestmentTransaction(historyInvestment.id, index, newTransactionData);
@@ -271,8 +274,13 @@ export default function InvestmentsPage() {
         const updatedData = await getInvestments();
         setInvestments(updatedData);
         setHistoryInvestment(updatedData.find(inv => inv.id === historyInvestment.id) || null);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to save transaction:", error);
+        toast({
+            variant: "destructive",
+            title: "Error Saving Transaction",
+            description: error.message || "There was a problem saving your transaction. Please try again.",
+        });
     }
 
     setIsTransactionSheetOpen(false);

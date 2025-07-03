@@ -93,7 +93,7 @@ export function AccountForm({
         form.reset({
           name: '',
           type: 'bank',
-          balance: undefined,
+          balance: 0,
           currency: globalCurrency,
           limit: undefined,
           dueDate: undefined,

@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { MOCK_DATA } from '@/lib/data';
+import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
 
 type Investment = (typeof MOCK_DATA.investments)[0];
 
@@ -25,12 +27,14 @@ interface InvestmentHistorySheetProps {
   investment: Investment | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onAddTransaction: () => void;
 }
 
 export function InvestmentHistorySheet({
   investment,
   isOpen,
   onOpenChange,
+  onAddTransaction,
 }: InvestmentHistorySheetProps) {
   if (!investment) {
     return null;
@@ -44,10 +48,18 @@ export function InvestmentHistorySheet({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>History for {investment.name}</SheetTitle>
-          <SheetDescription>
-            View the transaction history for this investment.
-          </SheetDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <SheetTitle>History for {investment.name}</SheetTitle>
+              <SheetDescription>
+                View the transaction history for this investment.
+              </SheetDescription>
+            </div>
+            <Button size="sm" onClick={onAddTransaction}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add
+            </Button>
+          </div>
         </SheetHeader>
         <div className="py-4">
           <div className="mb-4">

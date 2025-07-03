@@ -26,7 +26,9 @@ import {
 import { ArrowUp, ArrowDown, MoreHorizontal, PlusCircle, Edit, Trash2, History } from 'lucide-react';
 import { InvestmentForm, type InvestmentFormValues } from './investment-form';
 import { InvestmentHistorySheet } from './investment-history-sheet';
+import { InvestmentTransactionForm, type InvestmentTransactionFormValues } from './investment-transaction-form';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { format } from 'date-fns';
 
 type Investment = (typeof MOCK_DATA.investments)[0];
 
@@ -38,6 +40,7 @@ export default function InvestmentsPage() {
   const [investmentToDelete, setInvestmentToDelete] = useState<Investment | null>(null);
   const [activeTab, setActiveTab] = useState('All');
   const [historyInvestment, setHistoryInvestment] = useState<Investment | null>(null);
+  const [isTransactionSheetOpen, setIsTransactionSheetOpen] = useState(false);
 
   const investmentCategories = useMemo(
     () => MOCK_DATA.categories.filter((c) => c.type === 'investment'),
@@ -76,6 +79,10 @@ export default function InvestmentsPage() {
 
   const handleViewHistory = (investment: Investment) => {
     setHistoryInvestment(investment);
+  };
+
+  const handleAddTransaction = () => {
+    setIsTransactionSheetOpen(true);
   };
 
   const confirmDelete = () => {
@@ -130,6 +137,33 @@ export default function InvestmentsPage() {
     }
     setIsSheetOpen(false);
     setEditingInvestment(null);
+  };
+  
+  const handleSaveInvestmentTransaction = (data: InvestmentTransactionFormValues) => {
+    if (!historyInvestment) return;
+
+    const newTransaction = {
+      date: format(data.date, 'yyyy-MM-dd'),
+      type: data.type,
+      quantity: Number(data.quantity),
+      price: Number(data.price),
+    };
+
+    const updatedInvestments = investments.map(inv => {
+        if (inv.id === historyInvestment.id) {
+            return {
+                ...inv,
+                history: [...inv.history, newTransaction],
+            };
+        }
+        return inv;
+    });
+    setInvestments(updatedInvestments);
+
+    const newlyUpdatedInvestment = updatedInvestments.find(inv => inv.id === historyInvestment.id);
+    setHistoryInvestment(newlyUpdatedInvestment || null);
+
+    setIsTransactionSheetOpen(false);
   };
 
   return (
@@ -250,7 +284,13 @@ export default function InvestmentsPage() {
         investment={historyInvestment}
         isOpen={!!historyInvestment}
         onOpenChange={(isOpen) => !isOpen && setHistoryInvestment(null)}
+        onAddTransaction={handleAddTransaction}
       />
+       <InvestmentTransactionForm 
+        isOpen={isTransactionSheetOpen}
+        onOpenChange={setIsTransactionSheetOpen}
+        onSubmit={handleSaveInvestmentTransaction}
+       />
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>

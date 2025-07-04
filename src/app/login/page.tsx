@@ -56,9 +56,18 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 export default function LoginPage() {
+  const firebaseConfigVars = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  };
+
   const isFirebaseConfigured =
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
-    !process.env.NEXT_PUBLIC_FIREBASE_API_KEY.includes('YOUR_');
+    Object.values(firebaseConfigVars).every(Boolean) &&
+    !firebaseConfigVars.apiKey?.includes('YOUR_');
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSigningIn, setIsSigningIn] = React.useState(false);
@@ -179,7 +188,7 @@ export default function LoginPage() {
             <CardTitle className="text-2xl">Firebase Not Configured</CardTitle>
             <CardDescription>
               Please add your Firebase project credentials to the{' '}
-              <code>.env</code> file at the root of your project to enable
+              <code>.env.dev</code> file at the root of your project to enable
               authentication.
             </CardDescription>
           </CardHeader>

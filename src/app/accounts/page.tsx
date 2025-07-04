@@ -23,8 +23,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreHorizontal, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Edit, Trash2, History } from 'lucide-react';
 import { AccountForm, type AccountFormValues } from './account-form';
+import { AccountHistorySheet } from './account-history-sheet';
 import { Progress } from '@/components/ui/progress';
 import { getAccounts, addAccount, updateAccount, deleteAccount } from '@/services/accountService';
 import { getTransactions, deleteTransaction } from '@/services/transactionService';
@@ -46,6 +47,8 @@ export default function AccountsPage() {
   const [editingAccount, setEditingAccount] = React.useState<Account | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
   const [accountToDelete, setAccountToDelete] = React.useState<Account | null>(null);
+  const [isHistorySheetOpen, setIsHistorySheetOpen] = React.useState(false);
+  const [historyAccount, setHistoryAccount] = React.useState<Account | null>(null);
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -79,6 +82,8 @@ export default function AccountsPage() {
 
     return () => unsubscribe();
   }, [router, fetchData]);
+
+  const accountMap = React.useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
 
   const accountsWithCurrentBalance = React.useMemo(() => {
     return accounts.map(account => {
@@ -117,6 +122,11 @@ export default function AccountsPage() {
     setEditingAccount(account);
     setIsSheetOpen(true);
   };
+  
+  const handleViewHistory = (account: Account) => {
+    setHistoryAccount(account);
+    setIsHistorySheetOpen(true);
+  };
 
   const handleDeleteAccount = (account: Account) => {
     setAccountToDelete(account);
@@ -127,7 +137,7 @@ export default function AccountsPage() {
     if (accountToDelete) {
         try {
             // Firestore doesn't have cascading deletes, so we manually delete associated transactions.
-            const associatedTransactions = transactions.filter(t => t.accountId === accountToDelete.id);
+            const associatedTransactions = transactions.filter(t => t.accountId === accountToDelete.id || t.toAccountId === accountToDelete.id);
             await Promise.all(associatedTransactions.map(t => deleteTransaction(t.id)));
             
             await deleteAccount(accountToDelete.id);
@@ -245,6 +255,10 @@ export default function AccountsPage() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
+                                <DropdownMenuItem onClick={() => handleViewHistory(account)}>
+                                    <History className="mr-2 h-4 w-4" />
+                                    View History
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleEditAccount(account)}>
                                     <Edit className="mr-2 h-4 w-4" />
                                     Edit
@@ -317,6 +331,10 @@ export default function AccountsPage() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent>
+                                            <DropdownMenuItem onClick={() => handleViewHistory(account)}>
+                                                <History className="mr-2 h-4 w-4" />
+                                                View History
+                                            </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleEditAccount(account)}>
                                                 <Edit className="mr-2 h-4 w-4" />
                                                 Edit
@@ -351,6 +369,17 @@ export default function AccountsPage() {
         onSubmit={handleSaveAccount}
       />
       
+      <AccountHistorySheet
+        isOpen={isHistorySheetOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setHistoryAccount(null);
+          setIsHistorySheetOpen(isOpen);
+        }}
+        account={historyAccount}
+        transactions={transactions}
+        accountMap={accountMap}
+      />
+
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

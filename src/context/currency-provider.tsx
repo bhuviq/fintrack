@@ -16,7 +16,7 @@ interface CurrencyContextType {
 const CurrencyContext = React.createContext<CurrencyContextType | undefined>(undefined);
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const [currency, setCurrencyState] = React.useState<Currency>('USD');
+  const [currency, setCurrencyState] = React.useState<Currency>('INR');
   
   React.useEffect(() => {
     // Only run on client
@@ -42,7 +42,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   };
 
   const formatCurrency = React.useCallback((amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    const locale = currency === 'INR' ? 'en-IN' : currency === 'GBP' ? 'en-GB' : 'en-US';
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 2,

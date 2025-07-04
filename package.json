@@ -7,7 +7,7 @@
     "genkit:dev": "dotenv -e .env.dev -- genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "dotenv -e .env.dev -- genkit start -- tsx --watch src/ai/dev.ts",
     "build": "dotenv -e .env -- next build",
-    "start": "dotenv -e .env -- next start",
+    "start": "dotenv -e .env.dev -- next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },

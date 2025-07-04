@@ -102,10 +102,15 @@ export default function DashboardPage() {
   }, [router, fetchData]);
 
   const summary = React.useMemo(() => {
-    const totalInvestments = investments.reduce(
-      (acc, inv) => acc + inv.value,
-      0
-    );
+    const totalInvestments = investments.reduce((acc, inv) => {
+      const totalQuantity = (inv.history || []).reduce((quantity, tx) => {
+        if (inv.category === 'Real Estate') {
+          return quantity + (tx.type === 'buy' ? 1 : -1);
+        }
+        return quantity + (tx.type === 'buy' ? tx.quantity : -tx.quantity);
+      }, 0);
+      return acc + inv.value * totalQuantity;
+    }, 0);
 
     const accountBalances = accounts.map((account) => {
       const transactionTotal = transactions.reduce((total, t) => {
@@ -114,7 +119,7 @@ export default function DashboardPage() {
               return total + t.amount;
           }
           if (t.toAccountId === account.id && t.type === 'transfer') {
-                return total + t.amount;
+                 return total + t.amount;
           }
 
           // Debits from the account (money out)

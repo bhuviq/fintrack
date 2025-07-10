@@ -5,8 +5,9 @@ const withPWA = require('next-pwa')({
     dest: 'public',
     register: true,
     skipWaiting: true,
-    disable: process.env.NODE_ENV === 'development'
 });
+
+const isDev = process.env.NODE_ENV === 'development';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -31,4 +32,4 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['*.cloudworkstations.dev'],
 };
 
-export default withPWA(nextConfig);
+export default isDev ? nextConfig : withPWA(nextConfig);

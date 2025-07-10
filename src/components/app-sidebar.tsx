@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -11,6 +12,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -47,6 +49,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
+  const { setOpenMobile, isMobile } = useSidebar();
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -79,6 +82,12 @@ export function AppSidebar() {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}` || 'U';
   }
 
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -94,6 +103,7 @@ export function AppSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={pathname === item.href}
+                onClick={handleLinkClick}
               >
                 <Link href={item.href}>
                   <item.icon />

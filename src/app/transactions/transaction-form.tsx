@@ -141,6 +141,17 @@ export function TransactionForm({
   });
 
   const transactionType = form.watch('type');
+  const [selectedInvestmentCategory, setSelectedInvestmentCategory] = React.useState('');
+
+  const investmentCategories = React.useMemo(
+    () => [...new Set(investments.map(inv => inv.category))],
+    [investments]
+  );
+  
+  const filteredInvestments = React.useMemo(
+    () => investments.filter(inv => inv.category === selectedInvestmentCategory),
+    [investments, selectedInvestmentCategory]
+  );
 
   const fromAccounts = accounts.filter(acc => acc.type === 'bank');
   const toAccounts = accounts;
@@ -165,6 +176,12 @@ export function TransactionForm({
           investmentId: transaction.investmentId,
           investmentQuantity: transaction.investmentQuantity,
         });
+        if (transaction.type === 'investment' && transaction.investmentId) {
+            const relatedInvestment = investments.find(inv => inv.id === transaction.investmentId);
+            if (relatedInvestment) {
+                setSelectedInvestmentCategory(relatedInvestment.category);
+            }
+        }
       } else {
         form.reset({
           description: '',
@@ -177,14 +194,16 @@ export function TransactionForm({
           investmentId: '',
           investmentQuantity: undefined,
         });
+        setSelectedInvestmentCategory('');
       }
     }
-  }, [transaction, form, isOpen]);
+  }, [transaction, form, isOpen, investments]);
 
   React.useEffect(() => {
     form.setValue('category', '');
     form.setValue('investmentId', '');
     form.setValue('toAccountId', '');
+    setSelectedInvestmentCategory('');
   }, [transactionType, form]);
 
 
@@ -364,30 +383,59 @@ export function TransactionForm({
             
             {transactionType === 'investment' && (
               <>
-                <FormField
-                  control={form.control}
-                  name="investmentId"
-                  render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Investment</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormItem>
+                      <FormLabel>Investment Category</FormLabel>
+                      <Select 
+                          value={selectedInvestmentCategory}
+                          onValueChange={(value) => {
+                              setSelectedInvestmentCategory(value);
+                              form.setValue('investmentId', ''); // Reset investment on category change
+                          }}
+                      >
                           <FormControl>
                           <SelectTrigger>
-                              <SelectValue placeholder="Select an investment" />
+                              <SelectValue placeholder="Select a category" />
                           </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                          {investments.map((investment) => (
-                              <SelectItem key={investment.id} value={investment.id}>
-                                {investment.category}: {investment.name} {investment.symbol && `(${investment.symbol})`}
+                          {investmentCategories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
                               </SelectItem>
                           ))}
                           </SelectContent>
                       </Select>
-                      <FormMessage />
-                      </FormItem>
-                  )}
-                />
+                  </FormItem>
+                  <FormField
+                    control={form.control}
+                    name="investmentId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Investment Name</FormLabel>
+                        <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value} 
+                            disabled={!selectedInvestmentCategory}
+                        >
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select an investment" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {filteredInvestments.map((investment) => (
+                                <SelectItem key={investment.id} value={investment.id}>
+                                  {investment.name} {investment.symbol && `(${investment.symbol})`}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}

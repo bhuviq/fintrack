@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -212,6 +213,11 @@ export function AccountForm({
                       value={field.value ?? ''}
                     />
                   </FormControl>
+                  {accountType === 'bank' && (
+                    <FormDescription>
+                      This is the balance of your account before any transactions you add in the app.
+                    </FormDescription>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

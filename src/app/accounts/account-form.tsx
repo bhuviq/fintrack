@@ -66,7 +66,7 @@ interface AccountFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   account?: Account | null;
-  onSubmit: (data: Omit<AccountFormValues, 'balanceDate'> & { balanceDate: string }) => void;
+  onSubmit: (data: Omit<AccountFormValues, 'id' | 'balanceDate'> & { id?: string; balanceDate: string }) => void;
 }
 
 export function AccountForm({
@@ -133,7 +133,7 @@ export function AccountForm({
       delete submissionData.dueDate;
     }
 
-    onSubmit({ ...submissionData, id: account?.id } as Omit<AccountFormValues, 'balanceDate'> & { balanceDate: string });
+    onSubmit(submissionData as Omit<AccountFormValues, 'balanceDate'> & { balanceDate: string });
     onOpenChange(false);
   };
 

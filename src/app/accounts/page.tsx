@@ -157,7 +157,7 @@ export default function AccountsPage() {
     setAccountToDelete(null);
   };
 
-  const handleSaveAccount = async (data: Omit<AccountFormValues, 'balanceDate'> & { balanceDate: string }) => {
+  const handleSaveAccount = async (data: Omit<AccountFormValues, 'id' | 'balanceDate'> & { id?: string; balanceDate: string }) => {
     try {
         const { id, ...accountData } = data;
         const newAccountData: NewAccount = {

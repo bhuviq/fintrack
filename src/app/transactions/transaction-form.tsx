@@ -233,10 +233,7 @@ export function TransactionForm({
                     <RadioGroup
                       onValueChange={field.onChange}
                       value={field.value}
-                      className="flex space-x-4"
-                      // Editing an investment transaction is disabled for simplicity.
-                      // User should manage this from the investment's history.
-                      // This form is for CREATION.
+                      className="grid grid-cols-2 gap-4"
                       disabled={!!transaction}
                     >
                       <FormItem className="flex items-center space-x-2 space-y-0">
@@ -382,7 +379,7 @@ export function TransactionForm({
                           <SelectContent>
                           {investments.map((investment) => (
                               <SelectItem key={investment.id} value={investment.id}>
-                              {investment.name} {investment.symbol && `(${investment.symbol})`}
+                                {investment.category}: {investment.name} {investment.symbol && `(${investment.symbol})`}
                               </SelectItem>
                           ))}
                           </SelectContent>

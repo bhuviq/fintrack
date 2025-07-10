@@ -4,7 +4,6 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -17,7 +16,6 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function InstallPwaButton() {
   const [installPrompt, setInstallPrompt] = React.useState<BeforeInstallPromptEvent | null>(null);
-  const isMobile = useIsMobile();
 
   React.useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
@@ -46,8 +44,8 @@ export function InstallPwaButton() {
     setInstallPrompt(null);
   };
   
-  // Only show on mobile browsers where an install prompt is available.
-  if (!isMobile || !installPrompt) {
+  // Only show on browsers where an install prompt is available.
+  if (!installPrompt) {
     return null;
   }
 

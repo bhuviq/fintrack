@@ -39,6 +39,7 @@ import {
   Trash2,
   Edit,
   Calendar as CalendarIcon,
+  Briefcase,
 } from 'lucide-react';
 import { TransactionForm, type TransactionFormValues } from './transaction-form';
 import { format } from 'date-fns';
@@ -49,7 +50,8 @@ import { cn } from '@/lib/utils';
 import { getTransactions, addTransaction, updateTransaction, deleteTransaction } from '@/services/transactionService';
 import { getAccounts } from '@/services/accountService';
 import { getCategories } from '@/services/categoryService';
-import type { Transaction, Account, Category, NewTransaction, Currency } from '@/lib/types';
+import { getInvestments } from '@/services/investmentService';
+import type { Transaction, Account, Category, NewTransaction, Currency, Investment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -64,6 +66,7 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
@@ -79,14 +82,16 @@ export default function TransactionsPage() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-        const [fetchedTransactions, fetchedAccounts, fetchedCategories] = await Promise.all([
+        const [fetchedTransactions, fetchedAccounts, fetchedCategories, fetchedInvestments] = await Promise.all([
             getTransactions(),
             getAccounts(),
             getCategories(),
+            getInvestments(),
         ]);
         setTransactions(fetchedTransactions);
         setAccounts(fetchedAccounts);
         setCategories(fetchedCategories);
+        setInvestments(fetchedInvestments);
     } catch(error: any) {
         console.error("Failed to fetch data:", error);
         toast({
@@ -138,6 +143,15 @@ export default function TransactionsPage() {
   };
 
   const handleEditTransaction = (transaction: Transaction) => {
+    // Investment transactions are simplified and cannot be edited from this main view.
+    // They should be managed from the investment's history for consistency.
+    if (transaction.type === 'investment') {
+        toast({
+            title: "Edit from Investment History",
+            description: "Please edit investment transactions directly from the investment's history page.",
+        });
+        return;
+    }
     setEditingTransaction(transaction);
     setIsSheetOpen(true);
   };
@@ -150,10 +164,15 @@ export default function TransactionsPage() {
   const confirmDelete = async () => {
     if (transactionToDelete) {
         try {
-            await deleteTransaction(transactionToDelete.id);
+            await deleteTransaction(transactionToDelete.id, transactionToDelete.type, transactionToDelete.investmentId);
             await fetchData();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to delete transaction:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Deletion Failed',
+                description: error.message
+            });
         }
     }
     setDeleteAlertOpen(false);
@@ -164,19 +183,29 @@ export default function TransactionsPage() {
   const handleSaveTransaction = async (data: TransactionFormValues) => {
     try {
         const { id, ...transactionData} = data;
-        const newTransaction = {
-            ...transactionData,
-            date: format(data.date, 'yyyy-MM-dd'),
-            amount: Number(data.amount),
-        };
-        if (editingTransaction && id) {
-            await updateTransaction(id, newTransaction);
-        } else {
-            await addTransaction(newTransaction as NewTransaction);
+        
+        if (id && editingTransaction) { // This is an update
+            await updateTransaction(id, {
+                ...transactionData,
+                date: format(data.date, 'yyyy-MM-dd'),
+                amount: Number(data.amount),
+            } as NewTransaction);
+        } else { // This is a new transaction
+            await addTransaction({
+                ...transactionData,
+                date: format(data.date, 'yyyy-MM-dd'),
+                amount: Number(data.amount),
+            } as NewTransaction);
         }
+
         await fetchData();
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to save transaction:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Save Failed',
+            description: error.message
+        });
     }
     setIsSheetOpen(false);
     setEditingTransaction(null);
@@ -317,6 +346,12 @@ export default function TransactionsPage() {
                                     <ArrowLeftRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                 </div>
                             );
+                        case 'investment':
+                            return (
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900">
+                                    <Briefcase className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                            );
                     }
                 }
 
@@ -324,6 +359,7 @@ export default function TransactionsPage() {
                      switch (transaction.type) {
                         case 'income': return 'text-green-600';
                         case 'expense': return 'text-red-600';
+                        case 'investment': return 'text-red-600'; // Investment is a form of expense
                         default: return 'text-muted-foreground';
                      }
                 }
@@ -352,7 +388,7 @@ export default function TransactionsPage() {
                       <Badge variant="outline">{transaction.category}</Badge>
                     </TableCell>
                     <TableCell className={`text-right font-medium ${getAmountColor()}`}>
-                      {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
+                      {transaction.type === 'income' ? '+' : transaction.type === 'expense' || transaction.type === 'investment' ? '-' : ''}
                       {formatAmount(transaction.amount, currency)}
                     </TableCell>
                     <TableCell className="text-right">
@@ -365,6 +401,7 @@ export default function TransactionsPage() {
                         <DropdownMenuContent>
                           <DropdownMenuItem
                             onClick={() => handleEditTransaction(transaction)}
+                            disabled={transaction.type === 'investment'}
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
@@ -417,6 +454,7 @@ export default function TransactionsPage() {
         onSubmit={handleSaveTransaction}
         accounts={accounts}
         categories={categories}
+        investments={investments}
       />
       
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>

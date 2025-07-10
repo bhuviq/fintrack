@@ -19,11 +19,14 @@ export interface Transaction {
   userId: string;
   description: string;
   amount: number;
-  type: 'income' | 'expense' | 'transfer';
+  type: 'income' | 'expense' | 'transfer' | 'investment';
   date: string; // ISO string e.g., "2024-07-29"
   category: string;
   accountId: string; // Source for expense, Destination for income, From for transfer
   toAccountId?: string; // Destination for transfer
+  investmentId?: string; // Link to investment document
+  investmentQuantity?: number;
+  investmentTransactionId?: string; // The ID of the corresponding transaction within the investment's history array
 }
 
 export type NewTransaction = Omit<Transaction, 'id' | 'userId'>;
@@ -74,6 +77,8 @@ export interface InvestmentTransaction {
     quantity: number;
     price: number;
     unit?: 'oz' | 'gm';
+    // The ID of the master transaction in the top-level 'transactions' collection
+    masterTransactionId?: string; 
 }
 
 export interface Investment {

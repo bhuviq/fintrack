@@ -1,8 +1,9 @@
 import { db, auth } from '@/lib/firebase';
-import type { Transaction, NewTransaction } from '@/lib/types';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import type { Transaction, NewTransaction, Investment, InvestmentTransaction } from '@/lib/types';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch } from 'firebase/firestore';
 
 const transactionsCollection = collection(db, 'transactions');
+const investmentsCollection = collection(db, 'investments');
 
 const getUserId = () => {
     const user = auth.currentUser;
@@ -20,15 +21,67 @@ export const getTransactions = async (): Promise<Transaction[]> => {
 
 export const addTransaction = async (transactionData: NewTransaction): Promise<string> => {
     const userId = getUserId();
-    const docRef = await addDoc(transactionsCollection, { ...transactionData, userId });
-    return docRef.id;
-}
+
+    if (transactionData.type === 'investment') {
+        if (!transactionData.investmentId || !transactionData.investmentQuantity) {
+            throw new Error("Investment ID and quantity are required for investment transactions.");
+        }
+
+        const investmentDocRef = doc(investmentsCollection, transactionData.investmentId);
+        const investmentSnap = await getDoc(investmentDocRef);
+
+        if (!investmentSnap.exists()) {
+            throw new Error("Selected investment not found.");
+        }
+
+        const investment = investmentSnap.data() as Investment;
+        const pricePerUnit = transactionData.amount / transactionData.investmentQuantity;
+
+        const investmentTransaction: Omit<InvestmentTransaction, 'id'> = {
+            date: transactionData.date,
+            type: 'buy', // Currently only support buying from transaction form
+            quantity: transactionData.investmentQuantity,
+            price: pricePerUnit,
+        };
+
+        const newInvestmentHistory = [...(investment.history || []), { ...investmentTransaction, id: new Date().toISOString() }];
+
+        // Use a batch write to ensure both operations succeed or fail together
+        const batch = writeBatch(db);
+
+        // 1. Add the main transaction record
+        const newTransactionDocRef = doc(transactionsCollection);
+        batch.set(newTransactionDocRef, { ...transactionData, userId, investmentTransactionId: newTransactionDocRef.id });
+
+        // 2. Update the investment's history
+        batch.update(investmentDocRef, { history: newInvestmentHistory });
+
+        await batch.commit();
+        return newTransactionDocRef.id;
+
+    } else {
+        const docRef = await addDoc(transactionsCollection, { ...transactionData, userId });
+        return docRef.id;
+    }
+};
 
 export const updateTransaction = async (id: string, transactionData: Partial<NewTransaction>): Promise<void> => {
+    // Note: Investment transactions are not updatable from this generic function
+    // to avoid complexity with updating the linked investment history.
+    if (transactionData.type === 'investment') {
+        throw new Error("Investment transactions cannot be updated from here. Please manage them via the investment's history.");
+    }
     const transactionDoc = doc(db, "transactions", id);
     await updateDoc(transactionDoc, transactionData);
-}
+};
 
-export const deleteTransaction = async (id: string): Promise<void> => {
+export const deleteTransaction = async (id: string, type: string, investmentId?: string): Promise<void> => {
+    // Deleting an investment transaction from here is complex because we'd need to find the corresponding
+    // history item in the investment document. For now, we prevent this. Users should delete
+    // from the investment history sheet, which would then trigger the main transaction deletion.
+    // This is a potential future improvement.
+    if (type === 'investment') {
+        throw new Error("Investment transactions cannot be deleted from this view. Please remove the entry from the investment's history page to maintain consistency.");
+    }
     await deleteDoc(doc(db, "transactions", id));
-}
+};

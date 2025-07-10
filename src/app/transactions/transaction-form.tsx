@@ -41,7 +41,7 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import type { Transaction, Account, Category } from '@/lib/types';
+import type { Transaction, Account, Category, Investment } from '@/lib/types';
 
 
 const transactionSchema = z.object({
@@ -52,11 +52,13 @@ const transactionSchema = z.object({
   amount: z.coerce
     .number()
     .positive({ message: 'Amount must be a positive number.' }),
-  type: z.enum(['income', 'expense', 'transfer']),
+  type: z.enum(['income', 'expense', 'transfer', 'investment']),
   date: z.date(),
   category: z.string().optional(),
   accountId: z.string({ required_error: 'Please select an account.' }).min(1, { message: 'Please select an account.'}),
   toAccountId: z.string().optional(),
+  investmentId: z.string().optional(),
+  investmentQuantity: z.coerce.number().optional(),
 }).refine(data => {
     if (data.type === 'transfer') {
         return !!data.toAccountId && data.toAccountId.length > 0;
@@ -74,7 +76,24 @@ const transactionSchema = z.object({
     message: "From and To accounts cannot be the same.",
     path: ["toAccountId"],
 }).refine(data => {
-    if (data.type !== 'transfer') {
+    if (data.type === 'investment') {
+        return !!data.investmentId && data.investmentId.length > 0;
+    }
+    return true;
+}, {
+    message: "Please select an investment.",
+    path: ["investmentId"],
+}).refine(data => {
+    if (data.type === 'investment') {
+        return !!data.investmentQuantity && data.investmentQuantity > 0;
+    }
+    return true;
+}, {
+    message: "Please enter a positive quantity.",
+    path: ["investmentQuantity"],
+})
+.refine(data => {
+    if (data.type !== 'transfer' && data.type !== 'investment') {
         return !!data.category && data.category.length > 0;
     }
     return true;
@@ -94,6 +113,7 @@ interface TransactionFormProps {
   onSubmit: (data: TransactionFormValues) => void;
   accounts: Account[];
   categories: Category[];
+  investments: Investment[];
 }
 
 export function TransactionForm({
@@ -103,6 +123,7 @@ export function TransactionForm({
   onSubmit,
   accounts,
   categories,
+  investments,
 }: TransactionFormProps) {
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -114,12 +135,14 @@ export function TransactionForm({
       category: '',
       accountId: '',
       toAccountId: '',
+      investmentId: '',
+      investmentQuantity: undefined,
     },
   });
 
   const transactionType = form.watch('type');
 
-  const fromAccounts = accounts;
+  const fromAccounts = accounts.filter(acc => acc.type === 'bank');
   const toAccounts = accounts;
 
   const availableCategories = React.useMemo(
@@ -139,6 +162,8 @@ export function TransactionForm({
           category: transaction.category,
           accountId: transaction.accountId,
           toAccountId: transaction.toAccountId,
+          investmentId: transaction.investmentId,
+          investmentQuantity: transaction.investmentQuantity,
         });
       } else {
         form.reset({
@@ -149,6 +174,8 @@ export function TransactionForm({
           category: '',
           accountId: '',
           toAccountId: '',
+          investmentId: '',
+          investmentQuantity: undefined,
         });
       }
     }
@@ -156,6 +183,8 @@ export function TransactionForm({
 
   React.useEffect(() => {
     form.setValue('category', '');
+    form.setValue('investmentId', '');
+    form.setValue('toAccountId', '');
   }, [transactionType, form]);
 
 
@@ -164,8 +193,12 @@ export function TransactionForm({
 
     if (submissionData.type === 'transfer') {
       submissionData.category = 'Transfer';
+    } else if (submissionData.type === 'investment') {
+        submissionData.category = 'Investment';
     } else {
       delete submissionData.toAccountId;
+      delete submissionData.investmentId;
+      delete submissionData.investmentQuantity;
     }
 
     onSubmit({ ...submissionData, id: transaction?.id } as TransactionFormValues);
@@ -201,6 +234,10 @@ export function TransactionForm({
                       onValueChange={field.onChange}
                       value={field.value}
                       className="flex space-x-4"
+                      // Editing an investment transaction is disabled for simplicity.
+                      // User should manage this from the investment's history.
+                      // This form is for CREATION.
+                      disabled={!!transaction}
                     >
                       <FormItem className="flex items-center space-x-2 space-y-0">
                         <FormControl>
@@ -219,6 +256,12 @@ export function TransactionForm({
                           <RadioGroupItem value="transfer" />
                         </FormControl>
                         <FormLabel className="font-normal">Transfer</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value="investment" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Investment</FormLabel>
                       </FormItem>
                     </RadioGroup>
                   </FormControl>
@@ -284,7 +327,7 @@ export function TransactionForm({
                     name="accountId"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Account</FormLabel>
+                        <FormLabel>{transactionType === 'investment' ? 'From Account' : 'Account'}</FormLabel>
                         <Select
                             onValueChange={field.onChange}
                             value={field.value}
@@ -315,30 +358,90 @@ export function TransactionForm({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Coffee" {...field} />
+                    <Input placeholder={transactionType === 'investment' ? "e.g. Bought AAPL shares" : "e.g. Coffee"} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="e.g. 5.50"
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            
+            {transactionType === 'investment' && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="investmentId"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Investment</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                          <SelectTrigger>
+                              <SelectValue placeholder="Select an investment" />
+                          </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                          {investments.map((investment) => (
+                              <SelectItem key={investment.id} value={investment.id}>
+                              {investment.name} {investment.symbol && `(${investment.symbol})`}
+                              </SelectItem>
+                          ))}
+                          </SelectContent>
+                      </Select>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="investmentQuantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Quantity</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="e.g. 10" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Total Cost</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="e.g. 2500" {...field} value={field.value ?? ''}/>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </>
+            )}
+
+            {transactionType !== 'investment' && (
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 5.50"
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             
             <FormField
               control={form.control}
@@ -381,7 +484,7 @@ export function TransactionForm({
                 </FormItem>
               )}
             />
-            {transactionType !== 'transfer' && (
+            {transactionType !== 'transfer' && transactionType !== 'investment' && (
                 <FormField
                 control={form.control}
                 name="category"

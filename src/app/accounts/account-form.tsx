@@ -32,7 +32,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Account, Currency } from '@/lib/types';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import type { Account } from '@/lib/types';
 import { useCurrency } from '@/context/currency-provider';
 
 
@@ -42,7 +51,10 @@ const accountSchema = z.object({
     message: 'Account name must be at least 2 characters.',
   }),
   type: z.enum(['bank', 'credit-card']),
-  balance: z.coerce.number(),
+  openingBalance: z.coerce.number(),
+  balanceDate: z.date({
+    required_error: "An opening balance date is required.",
+  }),
   currency: z.enum(['USD', 'GBP', 'INR']),
   limit: z.coerce.number().positive().optional(),
   dueDate: z.coerce.number().min(1).max(31).optional(),
@@ -54,7 +66,7 @@ interface AccountFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   account?: Account | null;
-  onSubmit: (data: AccountFormValues) => void;
+  onSubmit: (data: Omit<AccountFormValues, 'balanceDate'> & { balanceDate: string }) => void;
 }
 
 export function AccountForm({
@@ -69,7 +81,8 @@ export function AccountForm({
     defaultValues: {
       name: '',
       type: 'bank',
-      balance: 0,
+      openingBalance: 0,
+      balanceDate: new Date(),
       currency: globalCurrency,
       limit: undefined,
       dueDate: undefined,
@@ -85,7 +98,8 @@ export function AccountForm({
           id: account.id,
           name: account.name,
           type: account.type,
-          balance: account.balance,
+          openingBalance: account.openingBalance,
+          balanceDate: new Date(account.balanceDate),
           currency: account.currency,
           limit: account.type === 'credit-card' ? account.limit : undefined,
           dueDate: account.type === 'credit-card' ? account.dueDate : undefined,
@@ -94,7 +108,8 @@ export function AccountForm({
         form.reset({
           name: '',
           type: 'bank',
-          balance: 0,
+          openingBalance: 0,
+          balanceDate: new Date(),
           currency: globalCurrency,
           limit: undefined,
           dueDate: undefined,
@@ -104,10 +119,13 @@ export function AccountForm({
   }, [account, form, isOpen, globalCurrency]);
 
   const handleSubmit = (values: AccountFormValues) => {
-    const submissionData: Partial<AccountFormValues> = { ...values };
+    const submissionData: Partial<AccountFormValues> & { balanceDate: string } = {
+       ...values,
+       balanceDate: format(values.balanceDate, 'yyyy-MM-dd')
+    };
     
-    if (submissionData.type === 'credit-card' && submissionData.balance && submissionData.balance > 0) {
-      submissionData.balance = -Math.abs(submissionData.balance);
+    if (submissionData.type === 'credit-card' && submissionData.openingBalance && submissionData.openingBalance > 0) {
+      submissionData.openingBalance = -Math.abs(submissionData.openingBalance);
     }
 
     if (submissionData.type === 'bank') {
@@ -115,7 +133,7 @@ export function AccountForm({
       delete submissionData.dueDate;
     }
 
-    onSubmit({ ...submissionData, id: account?.id } as AccountFormValues);
+    onSubmit({ ...submissionData, id: account?.id } as Omit<AccountFormValues, 'balanceDate'> & { balanceDate: string });
     onOpenChange(false);
   };
 
@@ -150,78 +168,113 @@ export function AccountForm({
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Account Type</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={!!account}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an account type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="bank">Bank Account</SelectItem>
-                        <SelectItem value="credit-card">Credit Card</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                  control={form.control}
-                  name="currency"
-                  render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Currency</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                          <SelectTrigger>
-                              <SelectValue placeholder="Select a currency" />
-                          </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                              <SelectItem value="USD">USD ($)</SelectItem>
-                              <SelectItem value="GBP">GBP (£)</SelectItem>
-                              <SelectItem value="INR">INR (₹)</SelectItem>
-                          </SelectContent>
-                      </Select>
-                      <FormMessage />
-                      </FormItem>
-                  )}
-                />
-            </div>
-             <FormField
+            <FormField
               control={form.control}
-              name="balance"
+              name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{accountType === 'credit-card' ? 'Initial Outstanding Balance' : 'Opening Balance'}</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder={accountType === 'credit-card' ? "e.g. 1500.00" : "e.g. 5000.00"}
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  {accountType === 'bank' && (
-                    <FormDescription>
-                      This is the balance of your account before any transactions you add in the app.
-                    </FormDescription>
-                  )}
+                  <FormLabel>Account Type</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={!!account}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an account type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="bank">Bank Account</SelectItem>
+                      <SelectItem value="credit-card">Credit Card</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="openingBalance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{accountType === 'credit-card' ? 'Initial Outstanding' : 'Opening Balance'}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder={accountType === 'credit-card' ? "e.g. 1500.00" : "e.g. 5000.00"}
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="balanceDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>As of Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={'outline'}
+                            className={cn(
+                              'w-full pl-3 text-left font-normal',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormDescription>
+              The account balance on a specific date, before any transactions you add in the app.
+            </FormDescription>
+
+            <FormField
+              control={form.control}
+              name="currency"
+              render={({ field }) => (
+                  <FormItem>
+                  <FormLabel>Currency</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                      <SelectTrigger>
+                          <SelectValue placeholder="Select a currency" />
+                      </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                          <SelectItem value="USD">USD ($)</SelectItem>
+                          <SelectItem value="GBP">GBP (£)</SelectItem>
+                          <SelectItem value="INR">INR (₹)</SelectItem>
+                      </SelectContent>
+                  </Select>
+                  <FormMessage />
+                  </FormItem>
+              )}
+            />
+
             {accountType === 'credit-card' && (
               <>
                 <FormField

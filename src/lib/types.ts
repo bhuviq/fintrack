@@ -6,7 +6,8 @@ export interface Account {
   userId: string;
   name: string;
   type: 'bank' | 'credit-card';
-  balance: number;
+  openingBalance: number;
+  balanceDate: string; // ISO string e.g., "2024-07-29"
   currency: Currency;
   limit?: number;
   dueDate?: number;

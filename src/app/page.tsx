@@ -113,7 +113,12 @@ export default function DashboardPage() {
     }, 0);
 
     const accountBalances = accounts.map((account) => {
+      const balanceDate = new Date(account.balanceDate);
       const transactionTotal = transactions.reduce((total, t) => {
+          const transactionDate = new Date(t.date);
+          if (transactionDate < balanceDate) {
+              return total;
+          }
           // Credits to the account (money in)
           if (t.accountId === account.id && t.type === 'income') {
               return total + t.amount;
@@ -129,7 +134,7 @@ export default function DashboardPage() {
           
           return total;
       }, 0);
-      return { ...account, currentBalance: account.balance + transactionTotal };
+      return { ...account, currentBalance: account.openingBalance + transactionTotal };
     });
 
     const bankAccountsBalance = accountBalances

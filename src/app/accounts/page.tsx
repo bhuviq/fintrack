@@ -87,7 +87,14 @@ export default function AccountsPage() {
 
   const accountsWithCurrentBalance = React.useMemo(() => {
     return accounts.map(account => {
+        const balanceDate = new Date(account.balanceDate);
+        
         const transactionTotal = transactions.reduce((total, t) => {
+            const transactionDate = new Date(t.date);
+            if (transactionDate < balanceDate) {
+                return total; // Ignore transactions before the opening balance date
+            }
+
             // Credits to the account (money in)
             if (t.accountId === account.id && t.type === 'income') {
                 return total + t.amount;
@@ -104,7 +111,7 @@ export default function AccountsPage() {
             return total;
         }, 0);
         
-        const currentBalance = account.balance + transactionTotal;
+        const currentBalance = account.openingBalance + transactionTotal;
         return { ...account, currentBalance };
     });
   }, [accounts, transactions]);
@@ -150,13 +157,23 @@ export default function AccountsPage() {
     setAccountToDelete(null);
   };
 
-  const handleSaveAccount = async (data: AccountFormValues) => {
+  const handleSaveAccount = async (data: Omit<AccountFormValues, 'balanceDate'> & { balanceDate: string }) => {
     try {
         const { id, ...accountData } = data;
+        const newAccountData: NewAccount = {
+          name: accountData.name,
+          type: accountData.type,
+          openingBalance: accountData.openingBalance,
+          balanceDate: accountData.balanceDate,
+          currency: accountData.currency,
+          limit: accountData.limit,
+          dueDate: accountData.dueDate
+        };
+
         if (editingAccount && id) {
-            await updateAccount(id, accountData as NewAccount);
+            await updateAccount(id, newAccountData);
         } else {
-            await addAccount(accountData as NewAccount);
+            await addAccount(newAccountData);
         }
         await fetchData();
     } catch (error) {

@@ -1,7 +1,9 @@
+
 'use client';
 
 import { usePathname } from 'next/navigation';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { InstallPwaButton } from './install-pwa-button';
 
 const pageTitles: { [key: string]: string } = {
   '/': 'Dashboard',
@@ -23,6 +25,9 @@ export function Header() {
       <div className="flex items-center gap-4">
         <SidebarTrigger className="md:hidden" />
         <h1 className="text-xl font-semibold">{title}</h1>
+      </div>
+      <div className="flex items-center gap-2">
+        <InstallPwaButton />
       </div>
     </header>
   );

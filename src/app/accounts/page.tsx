@@ -35,6 +35,7 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = React.useState<Account[]>([]);
@@ -157,21 +158,17 @@ export default function AccountsPage() {
     setAccountToDelete(null);
   };
 
-  const handleSaveAccount = async (data: Omit<AccountFormValues, 'id' | 'balanceDate'> & { id?: string; balanceDate: string }) => {
+  const handleSaveAccount = async (data: AccountFormValues) => {
     try {
-        const { ...accountData } = data;
-        const newAccountData: NewAccount = {
-          name: accountData.name,
-          type: accountData.type,
-          openingBalance: accountData.openingBalance,
-          balanceDate: accountData.balanceDate,
-          currency: accountData.currency,
-          limit: accountData.limit,
-          dueDate: accountData.dueDate
-        };
+        const { id, ...accountData } = data;
 
-        if (editingAccount) {
-            await updateAccount(editingAccount.id, newAccountData);
+        const newAccountData: NewAccount = {
+            ...accountData,
+            balanceDate: format(data.balanceDate, 'yyyy-MM-dd')
+        };
+        
+        if (id) {
+            await updateAccount(id, newAccountData);
         } else {
             await addAccount(newAccountData);
         }

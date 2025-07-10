@@ -66,7 +66,7 @@ interface AccountFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   account?: Account | null;
-  onSubmit: (data: Omit<AccountFormValues, 'id' | 'balanceDate'> & { id?: string; balanceDate: string }) => void;
+  onSubmit: (data: AccountFormValues) => void;
 }
 
 export function AccountForm({
@@ -106,6 +106,7 @@ export function AccountForm({
         });
       } else {
         form.reset({
+          id: undefined,
           name: '',
           type: 'bank',
           openingBalance: 0,
@@ -119,10 +120,7 @@ export function AccountForm({
   }, [account, form, isOpen, globalCurrency]);
 
   const handleSubmit = (values: AccountFormValues) => {
-    const submissionData: Partial<AccountFormValues> & { balanceDate: string } = {
-       ...values,
-       balanceDate: format(values.balanceDate, 'yyyy-MM-dd')
-    };
+    const submissionData = { ...values };
     
     if (submissionData.type === 'credit-card' && submissionData.openingBalance && submissionData.openingBalance > 0) {
       submissionData.openingBalance = -Math.abs(submissionData.openingBalance);
@@ -133,7 +131,7 @@ export function AccountForm({
       delete submissionData.dueDate;
     }
 
-    onSubmit(submissionData as Omit<AccountFormValues, 'balanceDate'> & { balanceDate: string });
+    onSubmit(submissionData);
     onOpenChange(false);
   };
 

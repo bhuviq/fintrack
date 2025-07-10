@@ -159,7 +159,7 @@ export default function AccountsPage() {
 
   const handleSaveAccount = async (data: Omit<AccountFormValues, 'id' | 'balanceDate'> & { id?: string; balanceDate: string }) => {
     try {
-        const { id, ...accountData } = data;
+        const { ...accountData } = data;
         const newAccountData: NewAccount = {
           name: accountData.name,
           type: accountData.type,
@@ -170,8 +170,8 @@ export default function AccountsPage() {
           dueDate: accountData.dueDate
         };
 
-        if (editingAccount && id) {
-            await updateAccount(id, newAccountData);
+        if (editingAccount) {
+            await updateAccount(editingAccount.id, newAccountData);
         } else {
             await addAccount(newAccountData);
         }

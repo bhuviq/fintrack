@@ -47,6 +47,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-provider';
+import Adsense from '@/components/adsense';
 
 export default function DashboardPage() {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
@@ -58,6 +59,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
   const accountMap = React.useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
+  const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -380,6 +382,14 @@ export default function DashboardPage() {
           ))}
         </CardContent>
       </Card>
+
+      {adsenseClientId && (
+        <Adsense
+            className="mt-6"
+            client={adsenseClientId}
+            slot="YOUR_AD_SLOT_ID_HERE" // You will need to replace this with a real Ad Slot ID from your AdSense account
+        />
+      )}
     </div>
   );
 }

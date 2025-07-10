@@ -3,6 +3,7 @@ import './globals.css';
 import { CurrencyProvider } from '@/context/currency-provider';
 import { AppContent } from '@/components/app-content';
 import * as React from 'react';
+import Script from 'next/script';
 
 export default function RootLayout({
   children,
@@ -23,6 +24,14 @@ export default function RootLayout({
         />
         <meta name="theme-color" content="#5DADE2" />
         <link rel="manifest" href="/manifest.json" />
+        {process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID && (
+            <Script
+                async
+                src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}`}
+                crossOrigin="anonymous"
+                strategy="afterInteractive"
+            />
+        )}
       </head>
       <body className="font-body antialiased">
         <CurrencyProvider>

@@ -58,6 +58,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-provider';
+import Adsense from '@/components/adsense';
 
 
 const ITEMS_PER_PAGE = 10;
@@ -71,6 +72,7 @@ export default function TransactionsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { currency: globalCurrency } = useCurrency();
+  const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -446,6 +448,15 @@ export default function TransactionsPage() {
           )}
         </CardContent>
       </Card>
+
+      {adsenseClientId && (
+        <Adsense
+            className="mt-6"
+            client={adsenseClientId}
+            slot="YOUR_AD_SLOT_ID_HERE" // You will need to replace this with a real Ad Slot ID
+        />
+       )}
+
 
       <TransactionForm
         isOpen={isSheetOpen}

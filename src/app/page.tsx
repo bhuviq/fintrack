@@ -60,6 +60,8 @@ export default function DashboardPage() {
   const { formatCurrency } = useCurrency();
   const accountMap = React.useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
   const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+  const dashboardAdSlotId = process.env.NEXT_PUBLIC_ADSENSE_DASHBOARD_SLOT_ID;
+
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -383,13 +385,13 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {adsenseClientId && (
+      {adsenseClientId && dashboardAdSlotId && (
         <Adsense
             className="mt-6"
             client={adsenseClientId}
-            slot="YOUR_AD_SLOT_ID_HERE" // You will need to replace this with a real Ad Slot ID from your AdSense account
+            slot={dashboardAdSlotId}
         />
-      )}
+       )}
     </div>
   );
 }

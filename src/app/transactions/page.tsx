@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -73,6 +72,8 @@ export default function TransactionsPage() {
   const { toast } = useToast();
   const { currency: globalCurrency } = useCurrency();
   const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+  const transactionsAdSlotId = process.env.NEXT_PUBLIC_ADSENSE_TRANSACTIONS_SLOT_ID;
+
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -449,11 +450,11 @@ export default function TransactionsPage() {
         </CardContent>
       </Card>
 
-      {adsenseClientId && (
+      {adsenseClientId && transactionsAdSlotId && (
         <Adsense
             className="mt-6"
             client={adsenseClientId}
-            slot="YOUR_AD_SLOT_ID_HERE" // You will need to replace this with a real Ad Slot ID
+            slot={transactionsAdSlotId}
         />
        )}
 

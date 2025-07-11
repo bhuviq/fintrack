@@ -33,16 +33,16 @@ const Adsense: React.FC<AdsenseProps> = ({
         }
     }, []);
 
-    if (!client || !slot) {
+    if (!client || !slot || client.includes("YOUR_") || slot.includes("YOUR_")) {
         return (
-            <div className="text-center p-4 bg-muted text-muted-foreground rounded-lg">
+            <div className="text-center p-4 bg-muted text-muted-foreground rounded-lg border border-dashed">
                 Ad space. Please provide a valid AdSense client and slot ID.
             </div>
         );
     }
 
     return (
-        <div className={className}>
+        <div className={cn('relative', className)}>
             <ins
                 className="adsbygoogle"
                 style={style}
@@ -50,7 +50,16 @@ const Adsense: React.FC<AdsenseProps> = ({
                 data-ad-slot={slot}
                 data-ad-format={format}
                 data-full-width-responsive={responsive ? "true" : "false"}
+                data-ad-status="unfilled"
             />
+            <div className="absolute inset-0 flex items-center justify-center bg-muted text-muted-foreground rounded-lg border border-dashed text-center p-4 ad-placeholder">
+                Advertisement
+            </div>
+            <style jsx>{`
+              .adsbygoogle[data-ad-status='filled'] + .ad-placeholder {
+                display: none;
+              }
+            `}</style>
         </div>
     );
 };

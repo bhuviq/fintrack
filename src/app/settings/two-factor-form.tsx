@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -35,7 +36,7 @@ export function TwoFactorForm({ isOpen, onOpenChange, userProfile, onSuccess }: 
     if (isOpen && userProfile) {
       const newSecret = authenticator.generateSecret();
       setSecret(newSecret);
-      const otpAuthUrl = authenticator.keyuri(userProfile.email || 'user', 'FinTrack', newSecret);
+      const otpAuthUrl = authenticator.keyuri(userProfile.email || 'user', 'FireFin', newSecret);
       setQrCodeUrl(otpAuthUrl);
       setOtp('');
     }

@@ -213,7 +213,7 @@ export default function LoginPage() {
             <Wallet className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">
-            {loginStep === '2fa' ? 'Two-Factor Authentication' : 'Welcome to FinTrack'}
+            {loginStep === '2fa' ? 'Two-Factor Authentication' : 'Welcome to FireFin'}
           </CardTitle>
           <CardDescription>
             {loginStep === '2fa'

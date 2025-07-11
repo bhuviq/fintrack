@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
 declare global {
     interface Window {

@@ -36,7 +36,7 @@ export function TwoFactorForm({ isOpen, onOpenChange, userProfile, onSuccess }: 
     if (isOpen && userProfile) {
       const newSecret = authenticator.generateSecret();
       setSecret(newSecret);
-      const otpAuthUrl = authenticator.keyuri(userProfile.email || 'user', 'FireFin', newSecret);
+      const otpAuthUrl = authenticator.keyuri(userProfile.email || 'user', 'fireFinTrack', newSecret);
       setQrCodeUrl(otpAuthUrl);
       setOtp('');
     }

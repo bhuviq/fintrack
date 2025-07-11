@@ -90,7 +90,7 @@ export default function WelcomePage() {
       await updateUserProfile(data);
       toast({
         title: 'Profile Updated',
-        description: "Welcome to FireFin! We're redirecting you to your dashboard.",
+        description: "Welcome to fireFinTrack! We're redirecting you to your dashboard.",
       });
       router.push('/');
     } catch (error) {
@@ -117,7 +117,7 @@ export default function WelcomePage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <CardTitle className="text-2xl">Welcome to FireFin!</CardTitle>
+          <CardTitle className="text-2xl">Welcome to fireFinTrack!</CardTitle>
           <CardDescription>
             Just a few more details to complete your profile.
           </CardDescription>

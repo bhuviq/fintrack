@@ -1,6 +1,6 @@
-## FireFin: Your Financial Companion
+## fireFinTrack: Your Financial Companion
 
-FireFin is a comprehensive personal finance management application built with Next.js and powered by Firebase. It provides a user-friendly interface to track your income, expenses, budgets, goals, and investments, helping you achieve financial clarity and control.
+fireFinTrack is a comprehensive personal finance management application built with Next.js and powered by Firebase. It provides a user-friendly interface to track your income, expenses, budgets, goals, and investments, helping you achieve financial clarity and control.
 
 **Key Features:**
 
@@ -16,7 +16,7 @@ FireFin is a comprehensive personal finance management application built with Ne
 
 **Feature Descriptions:**
 
-*   **Account Management:** FireFin allows you to add, edit, and delete various types of accounts, providing a centralized view of your financial holdings.
+*   **Account Management:** fireFinTrack allows you to add, edit, and delete various types of accounts, providing a centralized view of your financial holdings.
 *   **Transaction Tracking:** Easily record income and expenses, assign categories, and add notes to your transactions for detailed tracking.
 *   **Budgeting:** Create monthly or custom budgets for different spending categories. Track your progress against your budgets and receive alerts when you're approaching or exceeding your limits.
 *   **Goal Setting:** Define your financial goals, set target amounts and timelines, and track your contributions towards achieving them.
@@ -28,13 +28,13 @@ FireFin is a comprehensive personal finance management application built with Ne
 
 ## Installation and Setup
 
-To run FireFin locally, follow these steps:
+To run fireFinTrack locally, follow these steps:
 
 1.  **Clone the repository:**
     
 ```bash
 git clone <repository_url>
-    cd firefin
+    cd firefintrack
 ```
 
 2.  **Install dependencies:**

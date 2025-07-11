@@ -27,18 +27,23 @@ const Adsense: React.FC<AdsenseProps> = ({
     format = 'auto', 
     responsive = true 
 }) => {
+
+    const isDevMode = process.env.NODE_ENV === 'development';
+    const adClient = isDevMode ? "ca-google-test" : client;
+    const adSlot = isDevMode ? "3986429555" : slot;
+
     useEffect(() => {
         try {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
         } catch (err) {
             console.error(err);
         }
-    }, []);
+    }, [adClient, adSlot]); // Re-run if client/slot changes, e.g., in dev mode
 
-    if (!client || !slot || client.includes("YOUR_") || slot.includes("YOUR_")) {
+    if (!adClient || !adSlot || (!isDevMode && (adClient.includes("YOUR_") || adSlot.includes("YOUR_")))) {
         return (
             <div className="text-center p-4 bg-muted text-muted-foreground rounded-lg border border-dashed">
-                Ad space. Please provide a valid AdSense client and slot ID.
+                Ad space. Please provide a valid AdSense client and slot ID in your .env file for production.
             </div>
         );
     }
@@ -48,8 +53,8 @@ const Adsense: React.FC<AdsenseProps> = ({
             <ins
                 className="adsbygoogle"
                 style={style}
-                data-ad-client={client}
-                data-ad-slot={slot}
+                data-ad-client={adClient}
+                data-ad-slot={adSlot}
                 data-ad-format={format}
                 data-full-width-responsive={responsive ? "true" : "false"}
                 data-ad-status="unfilled"

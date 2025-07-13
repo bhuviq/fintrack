@@ -93,7 +93,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <Wallet className="h-8 w-8 text-primary" />
-          <h1 className="text-xl font-semibold">FireFinTrack</h1>
+          <h1 className="text-xl font-semibold">FinTrack</h1>
         </div>
       </SidebarHeader>
       <SidebarContent>

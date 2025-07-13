@@ -5,7 +5,6 @@ const withPWA = require('next-pwa')({
     dest: 'public',
     register: true,
     skipWaiting: true,
-    disable: process.env.NODE_ENV === 'development'
 });
 
 const nextConfig: NextConfig = {
@@ -31,4 +30,8 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['*.cloudworkstations.dev'],
 };
 
-export default withPWA(nextConfig);
+// Apply PWA wrapper only when not using Turbopack (i.e., for production builds)
+// The "next dev --turbopack" command sets process.env.TURBOPACK to "1"
+const finalConfig = process.env.TURBOPACK ? nextConfig : withPWA(nextConfig);
+
+export default finalConfig;

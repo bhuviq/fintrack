@@ -51,24 +51,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
-    if (isLoading) return;
+    if (isLoading) {
+      return; // Wait for auth state to load
+    }
 
-    const isPublic = publicRoutes.includes(pathname);
-    
-    // If auth is loading, don't do anything yet.
-    if (!isLoading) {
-      // If there's no user, and they are not on a public route, redirect to login.
-      if (!user && !isPublic) {
-        router.push('/login');
-      }
-      // If there IS a user, but they are on a public route, and 2FA is NOT pending, redirect to dashboard.
-      else if (user && isPublic && !is2faPending) {
-        router.push('/');
-      }
-      // If 2FA IS pending, but they are not on the login page, force them to the login page.
-      else if (is2faPending && pathname !== '/login') {
-        router.push('/login');
-      }
+    const isPublicRoute = publicRoutes.includes(pathname);
+
+    if (is2faPending && pathname !== '/login') {
+      // If 2FA is pending, the ONLY allowed page is /login. Force redirect.
+      router.push('/login');
+    } else if (user && !is2faPending && isPublicRoute) {
+      // If user is logged in (and not in 2FA flow) and on a public route, redirect to dashboard.
+      router.push('/');
+    } else if (!user && !isPublicRoute) {
+      // If user is not logged in and on a protected route, redirect to login.
+      router.push('/login');
     }
   }, [user, isLoading, pathname, router, is2faPending]);
   

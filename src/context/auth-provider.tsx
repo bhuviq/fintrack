@@ -36,8 +36,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const profile = await getUserProfile();
             setUserProfile(profile);
-            // If the user logs in but their 2FA is still pending from a previous session,
-            // ensure the state is reset correctly. This happens on first load.
+            // This is a failsafe. If a user was in a 2FA pending state from a previous session,
+            // but then disabled it elsewhere, this ensures the state is reset on a fresh auth check.
             if (is2faPending && profile && !profile.twoFactorEnabled) {
               setIs2faPending(false);
             }
@@ -46,7 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserProfile(null);
         }
       } else {
-        // Not logged in, so clear all user state.
         setUserProfile(null);
         setIs2faPending(false);
       }
@@ -54,30 +53,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [is2faPending]); // Add is2faPending to dependencies
+  }, [is2faPending]);
 
   React.useEffect(() => {
     if (isLoading) {
       return; // Don't do anything while auth state is loading
     }
-
+    
     const isPublicRoute = publicRoutes.includes(pathname);
+    const isFullyAuthenticated = user && !is2faPending;
 
-    // Scenario 1: 2FA is pending. User must be on the login page.
-    if (is2faPending && pathname !== '/login') {
-      router.push('/login');
-      return;
-    }
-
-    // Scenario 2: User is not logged in and is trying to access a protected route.
-    if (!user && !isPublicRoute) {
-      router.push('/login');
-      return;
-    }
-
-    // Scenario 3: User is fully logged in and is on a public route.
-    if (user && !is2faPending && isPublicRoute) {
+    // If the user is fully authenticated and on a public route, redirect them to the dashboard.
+    if (isFullyAuthenticated && isPublicRoute) {
       router.push('/');
+      return;
+    }
+
+    // If the user is NOT fully authenticated (not logged in, OR pending 2FA)
+    // and they are trying to access a protected route, send them to login.
+    if (!isFullyAuthenticated && !isPublicRoute) {
+      router.push('/login');
       return;
     }
 
@@ -86,7 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = { user, userProfile, isLoading, is2faPending, setIs2faPending };
 
-  // This is the loading state for the initial auth check
   if (isLoading) {
      return (
       <div className="flex min-h-screen items-center justify-center bg-background">

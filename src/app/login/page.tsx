@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  onAuthStateChanged,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { authenticator } from 'otplib';
@@ -26,6 +25,7 @@ import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile } from '@/lib/types';
 import { createUserProfileAndSeedData } from '@/services/userService';
+import { useAuth } from '@/context/auth-provider';
 
 // Google SVG Icon
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -69,33 +69,15 @@ export default function LoginPage() {
     Object.values(firebaseConfigVars).every(Boolean) &&
     !firebaseConfigVars.apiKey?.includes('YOUR_');
 
-  const [isLoading, setIsLoading] = React.useState(true);
+  const { isLoading: isAuthLoading, is2faPending, setIs2faPending } = useAuth();
   const [isSigningIn, setIsSigningIn] = React.useState(false);
-  const [loginStep, setLoginStep] = React.useState<'initial' | '2fa'>('initial');
   const [otp, setOtp] = React.useState('');
   const [isVerifyingOtp, setIsVerifyingOtp] = React.useState(false);
   const [tempProfile, setTempProfile] = React.useState<UserProfile | null>(null);
 
   const router = useRouter();
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setIsLoading(false);
-      return;
-    }
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      // If user is logged in but not in the middle of a 2FA flow, redirect.
-      if (user && !isSigningIn && loginStep === 'initial') {
-        router.push('/');
-      } else {
-        setIsLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router, isFirebaseConfigured, isSigningIn, loginStep]);
-
+  
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
     const provider = new GoogleAuthProvider();
@@ -114,7 +96,7 @@ export default function LoginPage() {
         if (profile.twoFactorEnabled && profile.twoFactorSecret) {
           // 2FA is enabled, prompt for code
           setTempProfile(profile);
-          setLoginStep('2fa');
+          setIs2faPending(true); // Set 2FA pending state
         } else {
           // Existing user, no 2FA, go to dashboard
           router.push('/');
@@ -159,6 +141,7 @@ export default function LoginPage() {
       const isValid = authenticator.verify({ token: otp, secret: tempProfile.twoFactorSecret });
       if (isValid) {
         toast({ title: 'Success', description: 'You have been successfully signed in.' });
+        setIs2faPending(false); // Clear 2FA pending state
         router.push('/');
       } else {
         toast({
@@ -200,7 +183,7 @@ export default function LoginPage() {
     );
   }
 
-  if (isLoading) {
+  if (isAuthLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Wallet className="h-12 w-12 animate-pulse text-primary" />
@@ -216,16 +199,16 @@ export default function LoginPage() {
             <Wallet className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">
-            {loginStep === '2fa' ? 'Two-Factor Authentication' : 'Welcome to FinTrack'}
+            {is2faPending ? 'Two-Factor Authentication' : 'Welcome to FinTrack'}
           </CardTitle>
           <CardDescription>
-            {loginStep === '2fa'
+            {is2faPending
               ? 'Enter the 6-digit code from your authenticator app to continue.'
               : 'Sign up or log in with Google to manage your finances.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          {loginStep === 'initial' && (
+          {!is2faPending && (
             <Button
               variant="outline"
               className="w-full"
@@ -237,7 +220,7 @@ export default function LoginPage() {
             </Button>
           )}
 
-          {loginStep === '2fa' && (
+          {is2faPending && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="otp-code">Verification Code</Label>

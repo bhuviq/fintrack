@@ -10,9 +10,7 @@ import { CategoryForm, type CategoryFormValues } from './category-form';
 import { getCategories, addCategory, updateCategory, deleteCategory } from '@/services/categoryService';
 import type { Category, NewCategory } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import {
     AlertDialog,
@@ -29,7 +27,7 @@ import {
 export default function CategoriesPage() {
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const router = useRouter();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
@@ -58,16 +56,10 @@ export default function CategoriesPage() {
   }, [toast]);
 
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+    if (user) {
         fetchData();
-      } else {
-        router.push('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router, fetchData]);
+    }
+  }, [user, fetchData]);
 
   const handleAddCategory = () => {
     setEditingCategory(null);

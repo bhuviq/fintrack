@@ -42,9 +42,7 @@ import { getInvestments } from '@/services/investmentService';
 import { getAccounts } from '@/services/accountService';
 import type { Transaction, Goal, Investment, Account } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-provider';
 import Adsense from '@/components/adsense';
@@ -55,7 +53,7 @@ export default function DashboardPage() {
   const [investments, setInvestments] = React.useState<Investment[]>([]);
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const router = useRouter();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
   const accountMap = React.useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
@@ -94,16 +92,10 @@ export default function DashboardPage() {
   }, [toast]);
   
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        fetchData();
-      } else {
-        router.push('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router, fetchData]);
+    if (user) {
+      fetchData();
+    }
+  }, [user, fetchData]);
 
   const summary = React.useMemo(() => {
     const totalInvestments = investments.reduce((acc, inv) => {

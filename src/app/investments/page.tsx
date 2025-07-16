@@ -37,9 +37,7 @@ import { getInvestments, addInvestment, updateInvestment, deleteInvestment, addI
 import { getCategories } from '@/services/categoryService';
 import type { Investment, InvestmentTransaction, Category, NewInvestment, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-provider';
 
@@ -49,7 +47,7 @@ export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { currency: globalCurrency } = useCurrency();
 
@@ -89,16 +87,10 @@ export default function InvestmentsPage() {
   }, [toast]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+    if (user) {
         fetchData();
-      } else {
-        router.push('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router, fetchData]);
+    }
+  }, [user, fetchData]);
 
 
   const investmentCategories = useMemo(
@@ -333,7 +325,7 @@ export default function InvestmentsPage() {
     }
 
     const quantity = history.reduce((acc, item) => {
-        return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
+        return acc + (item.type === 'buy' ? item.quantity : -t.quantity);
     }, 0);
 
     if (category === 'Mutual Funds') {

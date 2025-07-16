@@ -31,9 +31,7 @@ import { getAccounts, addAccount, updateAccount, deleteAccount } from '@/service
 import { getTransactions, deleteTransaction } from '@/services/transactionService';
 import type { Account, Transaction, NewAccount, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -41,7 +39,7 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const router = useRouter();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
@@ -73,16 +71,10 @@ export default function AccountsPage() {
   }, [toast]);
 
   React.useEffect(() => {
-     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+    if (user) {
         fetchData();
-      } else {
-        router.push('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router, fetchData]);
+    }
+  }, [user, fetchData]);
 
   const accountMap = React.useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
 

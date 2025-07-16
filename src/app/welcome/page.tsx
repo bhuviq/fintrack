@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { onAuthStateChanged } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -27,9 +26,9 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Wallet } from 'lucide-react';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
-import { getUserProfile, updateUserProfile } from '@/services/userService';
+import { updateUserProfile } from '@/services/userService';
 
 const welcomeSchema = z.object({
   firstName: z.string().min(1, { message: 'First name is required.' }),
@@ -42,7 +41,7 @@ type WelcomeFormValues = z.infer<typeof welcomeSchema>;
 export default function WelcomePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = React.useState(true);
+  const { userProfile, isLoading: isAuthLoading } = useAuth();
   const [isSaving, setIsSaving] = React.useState(false);
   
   const form = useForm<WelcomeFormValues>({
@@ -55,34 +54,14 @@ export default function WelcomePage() {
   });
 
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-          const profile = await getUserProfile();
-          if (profile) {
-            form.reset({
-              firstName: profile.firstName,
-              lastName: profile.lastName,
-              phone: profile.phone || '',
-            });
-          }
-        } catch (error) {
-            console.error("Failed to fetch profile", error);
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Could not load your profile. Please check your internet connection and Firebase configuration.',
-            });
-        } finally {
-            setIsLoading(false);
-        }
-      } else {
-        router.push('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router, form, toast]);
+    if (userProfile) {
+        form.reset({
+            firstName: userProfile.firstName,
+            lastName: userProfile.lastName,
+            phone: userProfile.phone || '',
+        });
+    }
+  }, [userProfile, form]);
 
   const onSubmit = async (data: WelcomeFormValues) => {
     setIsSaving(true);
@@ -105,7 +84,7 @@ export default function WelcomePage() {
     }
   };
   
-  if (isLoading) {
+  if (isAuthLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Wallet className="h-12 w-12 animate-pulse text-primary" />

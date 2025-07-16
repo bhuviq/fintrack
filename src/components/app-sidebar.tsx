@@ -29,9 +29,8 @@ import {
   Landmark,
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { getUserProfile } from '@/services/userService';
-import type { UserProfile } from '@/lib/types';
+import { signOut } from 'firebase/auth';
+import { useAuth } from '@/context/auth-provider';
 
 
 const navItems = [
@@ -48,26 +47,8 @@ const navItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
+  const { userProfile } = useAuth();
   const { setOpenMobile, isMobile } = useSidebar();
-
-  React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-            const profile = await getUserProfile();
-            setUserProfile(profile);
-        } catch (error) {
-            console.error("Failed to fetch user profile", error);
-            // Handle case where user is authenticated but profile call fails
-            setUserProfile(null);
-        }
-      } else {
-        setUserProfile(null);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
 
   const handleLogout = async () => {
     try {

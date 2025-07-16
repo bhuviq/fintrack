@@ -34,9 +34,7 @@ import { getTransactions } from '@/services/transactionService';
 import { getCategories } from '@/services/categoryService';
 import type { Budget, Transaction, Category, NewBudget, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 
 const ITEMS_PER_PAGE = 6;
@@ -46,7 +44,7 @@ export default function BudgetsPage() {
   const [budgets, setBudgets] = React.useState<Budget[]>([]);
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const router = useRouter();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -84,16 +82,10 @@ export default function BudgetsPage() {
   }, [toast]);
 
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+    if (user) {
         fetchData();
-      } else {
-        router.push('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router, fetchData]);
+    }
+  }, [user, fetchData]);
 
 
   const handleAddBudget = () => {

@@ -23,13 +23,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ShieldCheck } from 'lucide-react';
-import { getUserProfile, updateUserProfile } from '@/services/userService';
+import { updateUserProfile } from '@/services/userService';
 import type { UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from "@/hooks/use-toast";
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-provider';
 import { TwoFactorForm } from './two-factor-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CropImageDialog } from './crop-image-dialog';
@@ -39,43 +37,27 @@ import { useCurrency, type Currency } from '@/context/currency-provider';
 export default function SettingsPage() {
   const { toast } = useToast();
   const { setCurrency } = useCurrency();
+  const { user, userProfile, isLoading: isAuthLoading } = useAuth();
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [is2faFormOpen, setIs2faFormOpen] = React.useState(false);
   const [disable2faAlertOpen, setDisable2faAlertOpen] = React.useState(false);
-  const router = useRouter();
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [cropImageSrc, setCropImageSrc] = React.useState<string | null>(null);
 
   const fetchProfile = React.useCallback(async () => {
-    setIsLoading(true);
-    try {
-        const userProfile = await getUserProfile();
+    if (userProfile) {
         setProfile(userProfile);
-    } catch (error: any) {
-        console.error("Failed to fetch profile:", error);
-        toast({
-            variant: "destructive",
-            title: "Network Error",
-            description: "Could not load user profile. Please check your internet connection and Firebase configuration.",
-        })
-    } finally {
-        setIsLoading(false);
     }
-  }, [toast]);
+    setIsLoading(false);
+  }, [userProfile]);
 
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+    if (user) {
         fetchProfile();
-      } else {
-        router.push('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router, fetchProfile]);
+    }
+  }, [user, fetchProfile]);
   
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,7 +154,7 @@ export default function SettingsPage() {
   };
 
 
-  if(isLoading || !profile) {
+  if(isAuthLoading || isLoading || !profile) {
     return (
         <div className="space-y-6">
             <div>

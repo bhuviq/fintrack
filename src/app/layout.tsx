@@ -1,6 +1,7 @@
 
 import './globals.css';
 import { CurrencyProvider } from '@/context/currency-provider';
+import { AuthProvider } from '@/context/auth-provider';
 import { AppContent } from '@/components/app-content';
 import * as React from 'react';
 import Script from 'next/script';
@@ -24,6 +25,8 @@ export default function RootLayout({
         />
         <meta name="theme-color" content="#5DADE2" />
         <link rel="manifest" href="/manifest.json" />
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2213497241102382"
+     crossOrigin="anonymous"></script>
         {process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID && (
             <Script
                 async
@@ -34,9 +37,11 @@ export default function RootLayout({
         )}
       </head>
       <body className="font-body antialiased">
-        <CurrencyProvider>
-          <AppContent>{children}</AppContent>
-        </CurrencyProvider>
+        <AuthProvider>
+          <CurrencyProvider>
+            <AppContent>{children}</AppContent>
+          </CurrencyProvider>
+        </AuthProvider>
       </body>
     </html>
   );

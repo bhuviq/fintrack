@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -52,9 +53,7 @@ import { getCategories } from '@/services/categoryService';
 import { getInvestments } from '@/services/investmentService';
 import type { Transaction, Account, Category, NewTransaction, Currency, Investment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-provider';
 import Adsense from '@/components/adsense';
@@ -68,7 +67,7 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { currency: globalCurrency } = useCurrency();
   const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
@@ -108,16 +107,10 @@ export default function TransactionsPage() {
   }, [toast]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+    if (user) {
         fetchData();
-      } else {
-        router.push('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router, fetchData]);
+    }
+  }, [user, fetchData]);
   
   const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
 

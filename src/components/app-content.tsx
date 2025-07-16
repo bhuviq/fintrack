@@ -8,10 +8,11 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Header } from '@/components/header';
 import { InstallPwaButton } from './install-pwa-button';
+import { useAuth } from '@/context/auth-provider';
 
 export function AppContent({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isAuthPage = pathname === '/login' || pathname === '/welcome';
+  const { user, is2faPending } = useAuth();
+  const isAuthPage = !user || is2faPending;
 
   return isAuthPage ? (
     <>

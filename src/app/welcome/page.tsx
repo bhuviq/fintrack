@@ -69,7 +69,7 @@ export default function WelcomePage() {
       await updateUserProfile(data);
       toast({
         title: 'Profile Updated',
-        description: "Welcome to Splitzy! We're redirecting you to your dashboard.",
+        description: "Welcome to FinTrack! We're redirecting you to your dashboard.",
       });
       router.push('/');
     } catch (error) {
@@ -96,7 +96,7 @@ export default function WelcomePage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <CardTitle className="text-2xl">Welcome to Splitzy!</CardTitle>
+          <CardTitle className="text-2xl">Welcome to FinTrack!</CardTitle>
           <CardDescription>
             Just a few more details to complete your profile.
           </CardDescription>

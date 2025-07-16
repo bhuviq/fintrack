@@ -36,7 +36,7 @@ export function TwoFactorForm({ isOpen, onOpenChange, userProfile, onSuccess }: 
     if (isOpen && userProfile) {
       const newSecret = authenticator.generateSecret();
       setSecret(newSecret);
-      const serviceName = `${process.env.NODE_ENV ==='production' ? 'Splitzy-' : 'Demo-'}Light2Glow`;
+      const serviceName = `${process.env.NODE_ENV ==='production' ? 'FinTrack-' : 'Demo-'}Light2Glow`;
       const otpAuthUrl = authenticator.keyuri(userProfile.email || 'user', serviceName, newSecret);
       setQrCodeUrl(otpAuthUrl);
       setOtp('');

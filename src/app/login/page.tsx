@@ -200,7 +200,7 @@ export default function LoginPage() {
             <Wallet className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">
-            {is2faPending ? 'Two-Factor Authentication' : 'Welcome to Splitzy'}
+            {is2faPending ? 'Two-Factor Authentication' : 'Welcome to FinTrack'}
           </CardTitle>
           <CardDescription>
             {is2faPending
@@ -252,7 +252,7 @@ export default function LoginPage() {
         </CardContent>
         <CardFooter className="pt-6">
             <p className="text-xs text-muted-foreground text-center w-full">
-                Powered by Light2Glow &copy; {new Date().getFullYear()}
+                FinTrack is powered by Light2Glow &copy; {new Date().getFullYear()}
             </p>
         </CardFooter>
       </Card>

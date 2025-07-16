@@ -14,7 +14,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   isLoading: boolean;
   is2faPending: boolean;
-  setIs2faPending: (isPending: boolean) => void;
+  setIs2faPending: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);

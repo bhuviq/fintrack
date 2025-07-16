@@ -325,7 +325,7 @@ export default function InvestmentsPage() {
     }
 
     const quantity = history.reduce((acc, item) => {
-        return acc + (item.type === 'buy' ? item.quantity : -t.quantity);
+        return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
     }, 0);
 
     if (category === 'Mutual Funds') {

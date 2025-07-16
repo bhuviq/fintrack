@@ -138,7 +138,7 @@ export default function AccountsPage() {
         try {
             // Firestore doesn't have cascading deletes, so we manually delete associated transactions.
             const associatedTransactions = transactions.filter(t => t.accountId === accountToDelete.id || t.toAccountId === accountToDelete.id);
-            await Promise.all(associatedTransactions.map(t => deleteTransaction(t.id)));
+            await Promise.all(associatedTransactions.map(t => deleteTransaction(t.id, t.type, t.investmentId)));
             
             await deleteAccount(accountToDelete.id);
             await fetchData();

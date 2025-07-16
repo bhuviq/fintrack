@@ -13,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   useSidebar,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -74,7 +75,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <Wallet className="h-8 w-8 text-primary" />
-          <h1 className="text-xl font-semibold">FinTrack</h1>
+          <h1 className="text-xl font-semibold">Splitzy</h1>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -108,6 +109,11 @@ export function AppSidebar() {
           <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
           </Button>
+        </div>
+        <SidebarSeparator />
+        <div className="text-center text-xs text-muted-foreground p-2 space-y-1">
+            <p>Splitzy is powered by Light2Glow</p>
+            <p>&copy; {new Date().getFullYear()} Light2Glow. All rights reserved.</p>
         </div>
       </SidebarFooter>
     </Sidebar>

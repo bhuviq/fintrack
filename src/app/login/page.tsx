@@ -15,6 +15,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -199,7 +200,7 @@ export default function LoginPage() {
             <Wallet className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">
-            {is2faPending ? 'Two-Factor Authentication' : 'Welcome to FinTrack'}
+            {is2faPending ? 'Two-Factor Authentication' : 'Welcome to Splitzy'}
           </CardTitle>
           <CardDescription>
             {is2faPending
@@ -249,6 +250,11 @@ export default function LoginPage() {
             </div>
           )}
         </CardContent>
+        <CardFooter className="pt-6">
+            <p className="text-xs text-muted-foreground text-center w-full">
+                Powered by Light2Glow &copy; {new Date().getFullYear()}
+            </p>
+        </CardFooter>
       </Card>
     </div>
   );

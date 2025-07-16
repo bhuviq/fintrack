@@ -52,26 +52,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (isLoading) {
-      return; // Wait for auth state to load
+      return; // Don't do anything while auth state is loading
     }
 
     const isPublicRoute = publicRoutes.includes(pathname);
 
-    if (is2faPending && pathname !== '/login') {
-      // If 2FA is pending, the ONLY allowed page is /login. Force redirect.
+    // If user is not logged in and trying to access a protected route, redirect to login
+    if (!user && !isPublicRoute) {
       router.push('/login');
-    } else if (user && !is2faPending && isPublicRoute) {
-      // If user is logged in (and not in 2FA flow) and on a public route, redirect to dashboard.
-      router.push('/');
-    } else if (!user && !isPublicRoute) {
-      // If user is not logged in and on a protected route, redirect to login.
-      router.push('/login');
+      return;
     }
+
+    // If user is logged in (but not pending 2FA) and on a public route, redirect to dashboard
+    if (user && !is2faPending && isPublicRoute) {
+      router.push('/');
+      return;
+    }
+    
+    // If 2FA is pending, the only allowed page is /login. Force redirect.
+    if (is2faPending && pathname !== '/login') {
+      router.push('/login');
+      return;
+    }
+
   }, [user, isLoading, pathname, router, is2faPending]);
   
 
   const value = { user, userProfile, isLoading, is2faPending, setIs2faPending };
 
+  // This is the loading state for the initial auth check
   if (isLoading) {
      return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -80,9 +89,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // This is the key security check. If 2FA is pending, we only render children
+  // if the user is on the login page. Otherwise, we render nothing, preventing
+  // access to any other part of the app. The useEffect above will handle the redirect.
+  const canRenderChildren = !is2faPending || pathname === '/login';
+
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {canRenderChildren ? children : null}
     </AuthContext.Provider>
   );
 }

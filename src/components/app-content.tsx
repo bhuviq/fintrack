@@ -2,7 +2,6 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname } from 'next/navigation';
 import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';

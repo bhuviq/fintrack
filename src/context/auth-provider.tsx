@@ -36,11 +36,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const profile = await getUserProfile();
             setUserProfile(profile);
+            // If the user logs in but their 2FA is still pending from a previous session,
+            // ensure the state is reset correctly. This happens on first load.
+            if (is2faPending && profile && !profile.twoFactorEnabled) {
+              setIs2faPending(false);
+            }
         } catch (error) {
             console.error("Failed to fetch user profile in auth provider", error);
             setUserProfile(null);
         }
       } else {
+        // Not logged in, so clear all user state.
         setUserProfile(null);
         setIs2faPending(false);
       }
@@ -48,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [is2faPending]); // Add is2faPending to dependencies
 
   React.useEffect(() => {
     if (isLoading) {
@@ -57,21 +63,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const isPublicRoute = publicRoutes.includes(pathname);
 
-    // If user is not logged in and trying to access a protected route, redirect to login
+    // Scenario 1: 2FA is pending. User must be on the login page.
+    if (is2faPending && pathname !== '/login') {
+      router.push('/login');
+      return;
+    }
+
+    // Scenario 2: User is not logged in and is trying to access a protected route.
     if (!user && !isPublicRoute) {
       router.push('/login');
       return;
     }
 
-    // If user is logged in (but not pending 2FA) and on a public route, redirect to dashboard
+    // Scenario 3: User is fully logged in and is on a public route.
     if (user && !is2faPending && isPublicRoute) {
       router.push('/');
-      return;
-    }
-    
-    // If 2FA is pending, the only allowed page is /login. Force redirect.
-    if (is2faPending && pathname !== '/login') {
-      router.push('/login');
       return;
     }
 
@@ -89,14 +95,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // This is the key security check. If 2FA is pending, we only render children
-  // if the user is on the login page. Otherwise, we render nothing, preventing
-  // access to any other part of the app. The useEffect above will handle the redirect.
-  const canRenderChildren = !is2faPending || pathname === '/login';
-
   return (
     <AuthContext.Provider value={value}>
-      {canRenderChildren ? children : null}
+      {children}
     </AuthContext.Provider>
   );
 }

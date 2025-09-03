@@ -1,4 +1,7 @@
+
 ## FinTrack: Your Financial Companion
+
+**Live Demo:** [https://fintrack.light2glow.com/](https://fintrack.light2glow.com/)
 
 FinTrack is a comprehensive personal finance management application built with Next.js and powered by Firebase. It provides a user-friendly interface to track your income, expenses, budgets, goals, and investments, helping you achieve financial clarity and control.
 
@@ -95,4 +98,3 @@ The project follows a standard Next.js structure. Key directories include:
 
 To get started with the code, take a look at `src/app/page.tsx`, which is the main entry point of the application.
 
-```

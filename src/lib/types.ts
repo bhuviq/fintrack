@@ -5,7 +5,7 @@ export interface Account {
   id: string; // Firestore document ID
   userId: string;
   name: string;
-  type: 'bank' | 'credit-card';
+  type: 'bank' | 'credit-card' | 'broker';
   openingBalance: number;
   balanceDate: string; // ISO string e.g., "2024-07-29"
   currency: Currency;

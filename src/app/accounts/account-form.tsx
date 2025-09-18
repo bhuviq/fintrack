@@ -50,7 +50,7 @@ const accountSchema = z.object({
   name: z.string().min(2, {
     message: 'Account name must be at least 2 characters.',
   }),
-  type: z.enum(['bank', 'credit-card']),
+  type: z.enum(['bank', 'credit-card', 'broker']),
   openingBalance: z.coerce.number(),
   balanceDate: z.date({
     required_error: "An opening balance date is required.",
@@ -125,8 +125,12 @@ export function AccountForm({
     if (submissionData.type === 'credit-card' && submissionData.openingBalance && submissionData.openingBalance > 0) {
       submissionData.openingBalance = -Math.abs(submissionData.openingBalance);
     }
+    
+    if (submissionData.type === 'broker') {
+        submissionData.openingBalance = 0;
+    }
 
-    if (submissionData.type === 'bank') {
+    if (submissionData.type === 'bank' || submissionData.type === 'broker') {
       delete submissionData.limit;
       delete submissionData.dueDate;
     }
@@ -185,70 +189,75 @@ export function AccountForm({
                     <SelectContent>
                       <SelectItem value="bank">Bank Account</SelectItem>
                       <SelectItem value="credit-card">Credit Card</SelectItem>
+                      <SelectItem value="broker">Broker Account</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="openingBalance"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{accountType === 'credit-card' ? 'Initial Outstanding' : 'Opening Balance'}</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder={accountType === 'credit-card' ? "e.g. 1500.00" : "e.g. 5000.00"}
-                        {...field}
-                        value={field.value ?? ''}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="balanceDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>As of Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
+            {accountType !== 'broker' && <>
+                <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="openingBalance"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>{accountType === 'credit-card' ? 'Initial Outstanding' : 'Opening Balance'}</FormLabel>
                         <FormControl>
-                          <Button
-                            variant={'outline'}
-                            className={cn(
-                              'w-full pl-3 text-left font-normal',
-                              !field.value && 'text-muted-foreground'
-                            )}
-                          >
-                            {field.value instanceof Date && !isNaN(field.value.getTime()) ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                          initialFocus
+                        <Input
+                            type="number"
+                            placeholder={accountType === 'credit-card' ? "e.g. 1500.00" : "e.g. 5000.00"}
+                            {...field}
+                            value={field.value ?? ''}
                         />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormDescription>
-              The account balance on a specific date, before any transactions you add in the app.
-            </FormDescription>
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="balanceDate"
+                    render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>As of Date</FormLabel>
+                        <Popover>
+                        <PopoverTrigger asChild>
+                            <FormControl>
+                            <Button
+                                variant={'outline'}
+                                className={cn(
+                                'w-full pl-3 text-left font-normal',
+                                !field.value && 'text-muted-foreground'
+                                )}
+                            >
+                                {field.value instanceof Date && !isNaN(field.value.getTime()) ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                            </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                            initialFocus
+                            />
+                        </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                </div>
+                 <FormDescription>
+                    The account balance on a specific date, before any transactions you add in the app.
+                </FormDescription>
+            </>
+            }
+           
 
             <FormField
               control={form.control}

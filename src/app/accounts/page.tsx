@@ -97,7 +97,7 @@ export default function AccountsPage() {
             }
 
             // Debits from the account (money out)
-            if (t.accountId === account.id && (t.type === 'expense' || t.type === 'transfer')) {
+            if (t.accountId === account.id && (t.type === 'expense' || t.type === 'transfer' || t.type === 'investment')) {
                 return total - t.amount;
             }
             
@@ -112,6 +112,7 @@ export default function AccountsPage() {
 
   const bankAccounts = accountsWithCurrentBalance.filter(acc => acc.type === 'bank');
   const creditCardAccounts = accountsWithCurrentBalance.filter(acc => acc.type === 'credit-card');
+  const brokerAccounts = accountsWithCurrentBalance.filter(acc => acc.type === 'broker');
 
   const handleAddAccount = () => {
     setEditingAccount(null);
@@ -189,6 +190,14 @@ export default function AccountsPage() {
     if (value < 80) return 'bg-yellow-500';
     return 'bg-red-500';
   };
+  
+  const getBadgeForType = (type: Account['type']) => {
+    switch (type) {
+      case 'bank': return <Badge variant={'secondary'}>Bank Account</Badge>;
+      case 'credit-card': return <Badge variant={'destructive'}>Credit Card</Badge>;
+      case 'broker': return <Badge className='bg-indigo-500 text-white'>Broker Account</Badge>;
+    }
+  }
 
   if (isLoading) {
     return (
@@ -308,8 +317,8 @@ export default function AccountsPage() {
         </div>
 
         <div>
-           <h2 className="text-xl font-bold mb-4">Bank Accounts</h2>
-           {bankAccounts.length > 0 ? (
+           <h2 className="text-xl font-bold mb-4">Cash & Investment Accounts</h2>
+           {[...bankAccounts, ...brokerAccounts].length > 0 ? (
             <Card>
                 <CardContent className="p-0">
                 <Table>
@@ -322,11 +331,11 @@ export default function AccountsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {bankAccounts.map((account) => (
+                        {[...bankAccounts, ...brokerAccounts].sort((a,b) => a.name.localeCompare(b.name)).map((account) => (
                             <TableRow key={account.id}>
                                 <TableCell className="font-medium">{account.name}</TableCell>
                                 <TableCell>
-                                    <Badge variant={'secondary'}>Bank Account</Badge>
+                                    {getBadgeForType(account.type)}
                                 </TableCell>
                                 <TableCell className="text-right font-medium">{formatBalance(account.currentBalance, account.currency)}</TableCell>
                                 <TableCell>
@@ -361,8 +370,8 @@ export default function AccountsPage() {
             </Card>
            ) : (
             <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">No bank accounts added yet.</p>
-                <p className="text-sm text-muted-foreground">Add a bank account to get started!</p>
+                <p className="text-muted-foreground">No bank or broker accounts added yet.</p>
+                <p className="text-sm text-muted-foreground">Add an account to get started!</p>
             </div>
            )}
         </div>

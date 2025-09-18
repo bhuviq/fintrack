@@ -27,6 +27,7 @@ import {
   Banknote,
   Landmark,
   CreditCard,
+  Briefcase,
 } from 'lucide-react';
 import {
   Bar,
@@ -124,7 +125,7 @@ export default function DashboardPage() {
           }
 
           // Debits from the account (money out)
-          if (t.accountId === account.id && (t.type === 'expense' || t.type === 'transfer')) {
+          if (t.accountId === account.id && (t.type === 'expense' || t.type === 'transfer' || t.type === 'investment')) {
               return total - t.amount;
           }
           
@@ -132,20 +133,20 @@ export default function DashboardPage() {
       }, 0);
       return { ...account, currentBalance: account.openingBalance + transactionTotal };
     });
-
-    const bankAccountsBalance = accountBalances
-      .filter((acc) => acc.type === 'bank')
+    
+    const cashAndBrokerage = accountBalances
+      .filter((acc) => acc.type === 'bank' || acc.type === 'broker')
       .reduce((acc, b) => acc + b.currentBalance, 0);
 
     const creditCardDebt = accountBalances
       .filter((acc) => acc.type === 'credit-card')
       .reduce((acc, cc) => acc + cc.currentBalance, 0);
 
-    const netWorth = totalInvestments + bankAccountsBalance + creditCardDebt;
+    const netWorth = totalInvestments + cashAndBrokerage + creditCardDebt;
 
     return {
       netWorth,
-      bankAccounts: bankAccountsBalance,
+      cashAndBrokerage: cashAndBrokerage,
       investments: totalInvestments,
       creditCardDebt,
     };
@@ -178,8 +179,8 @@ export default function DashboardPage() {
       icon: <DollarSign className="h-6 w-6 text-muted-foreground" />,
     },
     {
-      title: 'Bank Accounts',
-      amount: summary.bankAccounts,
+      title: 'Cash & Brokerage',
+      amount: summary.cashAndBrokerage,
       icon: <Landmark className="h-6 w-6 text-muted-foreground" />,
     },
     {
@@ -318,12 +319,19 @@ export default function DashboardPage() {
                                         <ArrowLeftRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                     </div>
                                 );
+                            case 'investment':
+                                return (
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900">
+                                        <Briefcase className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                    </div>
+                                );
                         }
                     }
                     const getAmountColor = () => {
                         switch (transaction.type) {
                             case 'income': return 'text-green-600';
                             case 'expense': return 'text-red-600';
+                            case 'investment': return 'text-red-600';
                             default: return 'text-muted-foreground';
                         }
                     }
@@ -343,7 +351,7 @@ export default function DashboardPage() {
                             </div>
                             </TableCell>
                             <TableCell className={`text-right font-medium ${getAmountColor()}`}>
-                                {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
+                                {transaction.type === 'income' ? '+' : transaction.type === 'expense' || transaction.type === 'investment' ? '-' : ''}
                                 {formatCurrency(transaction.amount)}
                             </TableCell>
                         </TableRow>

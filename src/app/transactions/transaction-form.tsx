@@ -153,8 +153,9 @@ export function TransactionForm({
     [investments, selectedInvestmentCategory]
   );
 
-  const fromAccounts = accounts.filter(acc => acc.type === 'bank');
+  const fromAccounts = accounts;
   const toAccounts = accounts;
+  const brokerAccounts = accounts.filter(acc => acc.type === 'broker');
 
   const availableCategories = React.useMemo(
     () => categories.filter((c) => c.type === transactionType && c.type !== 'investment'),
@@ -343,7 +344,7 @@ export function TransactionForm({
                     name="accountId"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>{transactionType === 'investment' ? 'From Account' : 'Account'}</FormLabel>
+                        <FormLabel>{transactionType === 'investment' ? 'From Broker Account' : 'Account'}</FormLabel>
                         <Select
                             onValueChange={field.onChange}
                             value={field.value}
@@ -354,7 +355,7 @@ export function TransactionForm({
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            {accounts.map((account) => (
+                            {(transactionType === 'investment' ? brokerAccounts : accounts).map((account) => (
                                 <SelectItem key={account.id} value={account.id}>
                                 {account.name}
                                 </SelectItem>

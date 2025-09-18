@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -200,14 +201,17 @@ export function TransactionForm({
   }, [transaction, form, isOpen, investments]);
 
   React.useEffect(() => {
-    // Reset fields when transaction type changes, except during initial load of an existing transaction
-    if (!transaction || form.getValues('type') !== transaction.type) {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'type' && value.type !== transaction?.type) {
         form.setValue('category', '');
         form.setValue('investmentId', '');
         form.setValue('toAccountId', '');
+        form.setValue('accountId', '');
         setSelectedInvestmentCategory('');
-    }
-  }, [transactionType, form, transaction]);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, transaction]);
 
 
   const handleSubmit = (values: TransactionFormValues) => {
@@ -575,3 +579,5 @@ export function TransactionForm({
     </Sheet>
   );
 }
+
+    

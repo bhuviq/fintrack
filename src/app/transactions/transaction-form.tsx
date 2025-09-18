@@ -143,8 +143,8 @@ export function TransactionForm({
   const [selectedInvestmentCategory, setSelectedInvestmentCategory] = React.useState('');
 
   const investmentCategories = React.useMemo(
-    () => [...new Set(investments.map(inv => inv.category))],
-    [investments]
+    () => categories.filter(c => c.type === 'investment'),
+    [categories]
   );
   
   const filteredInvestments = React.useMemo(
@@ -408,8 +408,8 @@ export function TransactionForm({
                           </FormControl>
                           <SelectContent>
                           {investmentCategories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
+                              <SelectItem key={category.id} value={category.name}>
+                                {category.name}
                               </SelectItem>
                           ))}
                           </SelectContent>

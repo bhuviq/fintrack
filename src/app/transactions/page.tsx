@@ -41,6 +41,13 @@ import {
   Calendar as CalendarIcon,
   Briefcase,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { TransactionForm, type TransactionFormValues } from './transaction-form';
 import { format } from 'date-fns';
 import { type DateRange } from 'react-day-picker';
@@ -78,7 +85,11 @@ export default function TransactionsPage() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  
   const [date, setDate] = useState<DateRange | undefined>();
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [accountFilter, setAccountFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchData = useCallback(async () => {
@@ -113,9 +124,17 @@ export default function TransactionsPage() {
   }, [user, fetchData]);
   
   const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
+  
+  const uniqueCategories = useMemo(() => {
+    const categoryNames = new Set(transactions.map(t => t.category));
+    return ['all', ...Array.from(categoryNames)].sort();
+  }, [transactions]);
+
 
   const filteredTransactions = useMemo(() => {
     let items = [...transactions];
+    
+    // Date filter
     if (date?.from) {
       const fromDate = new Date(date.from.setHours(0, 0, 0, 0));
       const toDate = date.to ? new Date(date.to.setHours(23, 59, 59, 999)) : fromDate;
@@ -124,8 +143,21 @@ export default function TransactionsPage() {
         return transactionDate >= fromDate && transactionDate <= toDate;
       });
     }
+    // Type filter
+    if (typeFilter !== 'all') {
+      items = items.filter(t => t.type === typeFilter);
+    }
+    // Account filter
+    if (accountFilter !== 'all') {
+      items = items.filter(t => t.accountId === accountFilter || t.toAccountId === accountFilter);
+    }
+    // Category filter
+    if (categoryFilter !== 'all') {
+      items = items.filter(t => t.category === categoryFilter);
+    }
+
     return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, date]);
+  }, [transactions, date, typeFilter, accountFilter, categoryFilter]);
 
   const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
   const paginatedTransactions = filteredTransactions.slice(
@@ -259,48 +291,87 @@ export default function TransactionsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Popover>
+          <Button onClick={handleAddTransaction}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add
+          </Button>
+        </div>
+      </div>
+
+       <div className="flex flex-wrap items-center gap-2 mb-4">
+        <Popover>
             <PopoverTrigger asChild>
-              <Button
+                <Button
                 id="date"
                 variant={"outline"}
                 size="sm"
                 className={cn(
-                  "w-[240px] justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
+                    "w-[240px] justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
                 )}
-              >
+                >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {date?.from ? (
-                  date.to ? (
+                    date.to ? (
                     <>
-                      {format(date.from, "LLL dd, y")} -{" "}
-                      {format(date.to, "LLL dd, y")}
+                        {format(date.from, "LLL dd, y")} -{" "}
+                        {format(date.to, "LLL dd, y")}
                     </>
-                  ) : (
+                    ) : (
                     format(date.from, "LLL dd, y")
-                  )
+                    )
                 ) : (
-                  <span>Pick a date</span>
+                    <span>Filter by date</span>
                 )}
-              </Button>
+                </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
+                <Calendar
                 initialFocus
                 mode="range"
                 defaultMonth={date?.from}
                 selected={date}
                 onSelect={setDate}
                 numberOfMonths={2}
-              />
+                />
             </PopoverContent>
-          </Popover>
-          <Button onClick={handleAddTransaction}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Transaction
-          </Button>
-        </div>
+        </Popover>
+
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-auto sm:w-[150px] text-sm h-9">
+                <SelectValue placeholder="Filter by type" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="income">Income</SelectItem>
+                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="transfer">Transfer</SelectItem>
+                <SelectItem value="investment">Investment</SelectItem>
+            </SelectContent>
+        </Select>
+
+        <Select value={accountFilter} onValueChange={setAccountFilter}>
+            <SelectTrigger className="w-auto sm:w-[180px] text-sm h-9">
+                <SelectValue placeholder="Filter by account" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Accounts</SelectItem>
+                {accounts.map(account => (
+                    <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-auto sm:w-[180px] text-sm h-9">
+                <SelectValue placeholder="Filter by category" />
+            </SelectTrigger>
+            <SelectContent>
+                 {uniqueCategories.map(category => (
+                    <SelectItem key={category} value={category} className="capitalize">{category === 'all' ? 'All Categories' : category}</SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
       </div>
 
       <Card>

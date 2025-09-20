@@ -470,7 +470,7 @@ export default function InvestmentsPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Symbol</TableHead>
+                <TableHead>Symbol / Type</TableHead>
                 <TableHead className="text-right">Quantity</TableHead>
                 <TableHead className="text-right">Value</TableHead>
                 <TableHead className="text-right">Today's Change</TableHead>
@@ -484,7 +484,7 @@ export default function InvestmentsPage() {
                   <TableCell>
                     <Badge variant="outline">{investment.category}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>
+                  <TableCell className="text-muted-foreground">{investment.symbol || investment.type || 'N/A'}</TableCell>
                   <TableCell className="text-right font-medium">{formatQuantity(investment)}</TableCell>
                   <TableCell className="text-right font-medium">{formatAmount(investment.value, investment.currency)}</TableCell>
                   <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>

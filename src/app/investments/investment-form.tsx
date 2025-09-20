@@ -87,7 +87,7 @@ export function InvestmentForm({
   }, [investmentCategory]);
   
   const showType = React.useMemo(() => {
-    return ['Mutual Fund', 'Real Estate'].includes(investmentCategory);
+    return ['Mutual Fund', 'Real Estate', 'Gold'].includes(investmentCategory);
   }, [investmentCategory]);
   
   const typeOptions = React.useMemo(() => {
@@ -96,6 +96,9 @@ export function InvestmentForm({
     }
     if (investmentCategory === 'Real Estate') {
         return ['Residential', 'Commercial'];
+    }
+    if (investmentCategory === 'Gold') {
+        return ['Physical', 'Bonds', 'ETF'];
     }
     return [];
   }, [investmentCategory]);

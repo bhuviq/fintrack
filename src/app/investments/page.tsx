@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,25 +24,28 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowUp, ArrowDown, MoreHorizontal, PlusCircle, Edit, Trash2, History, Calendar as CalendarIcon } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ArrowUp, ArrowDown, ChevronsUpDown, MoreHorizontal, PlusCircle, Edit, Trash2, History } from 'lucide-react';
 import { InvestmentForm, type InvestmentFormValues } from './investment-form';
 import { InvestmentHistorySheet } from './investment-history-sheet';
 import { InvestmentTransactionForm, type InvestmentTransactionFormValues } from './investment-transaction-form';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
-import { type DateRange } from 'react-day-picker';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
 import { getInvestments, addInvestment, updateInvestment, deleteInvestment, addInvestmentTransaction, updateInvestmentTransaction, deleteInvestmentTransaction } from '@/services/investmentService';
 import { getCategories } from '@/services/categoryService';
 import type { Investment, InvestmentTransaction, Category, NewInvestment, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
-import { useCurrency } from '@/context/currency-provider';
 
 const ITEMS_PER_PAGE = 10;
+type SortableKeys = keyof Investment | 'quantity' | 'netValue';
 
 export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<Investment[]>([]);
@@ -49,7 +53,6 @@ export default function InvestmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
-  const { currency: globalCurrency } = useCurrency();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
@@ -61,9 +64,12 @@ export default function InvestmentsPage() {
   const [editingTransaction, setEditingTransaction] = useState<{ transaction: InvestmentTransaction; index: number } | null>(null);
   const [deleteTransactionAlertOpen, setDeleteTransactionAlertOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
-
-  const [date, setDate] = useState<DateRange | undefined>();
+  
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
+
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -102,61 +108,117 @@ export default function InvestmentsPage() {
     () => ['All', ...Array.from(new Set(investments.map((i) => i.category)))],
     [investments]
   );
+  
+  const uniqueInvestmentTypes = useMemo(() => {
+    const types = new Set(investments.map(inv => inv.type).filter(Boolean));
+    return ['all', ...Array.from(types)] as string[];
+  }, [investments]);
 
-  const filteredInvestments = useMemo(() => {
-    let items = [...investments];
-    // Filter by category tab
+  const investmentsWithCalculatedFields = useMemo(() => {
+    return investments.map(investment => {
+      const { category, history } = investment;
+       if (!history || history.length === 0) {
+        return { ...investment, quantity: 0, netValue: 0 };
+      }
+      const quantity = history.reduce((acc, item) => {
+        if (category === 'Real Estate') return acc + (item.type === 'buy' ? 1 : -1);
+        return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
+      }, 0);
+      const netValue = quantity * investment.value;
+      return { ...investment, quantity, netValue };
+    });
+  }, [investments]);
+
+
+  const filteredAndSortedInvestments = useMemo(() => {
+    let items = [...investmentsWithCalculatedFields];
     if (activeTab !== 'All') {
       items = items.filter((i) => i.category === activeTab);
     }
-    // Filter by date range
-    if (date?.from) {
-      const fromDate = new Date(date.from.setHours(0, 0, 0, 0));
-      const toDate = date.to ? new Date(date.to.setHours(23, 59, 59, 999)) : fromDate;
-      items = items.filter(investment => 
-        (investment.history || []).some(transaction => {
-            const transactionDate = new Date(transaction.date);
-            return transactionDate >= fromDate && transactionDate <= toDate;
-        })
-      );
+    if (searchQuery) {
+        items = items.filter(i => 
+            i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (i.symbol && i.symbol.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+    }
+    if (typeFilter !== 'all') {
+        items = items.filter(i => i.type === typeFilter);
+    }
+    if (sortConfig !== null) {
+      items.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+
+        if (aValue === undefined || aValue === null) return 1;
+        if (bValue === undefined || bValue === null) return -1;
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          if (aValue.toLowerCase() < bValue.toLowerCase()) {
+            return sortConfig.direction === 'ascending' ? -1 : 1;
+          }
+          if (aValue.toLowerCase() > bValue.toLowerCase()) {
+            return sortConfig.direction === 'ascending' ? 1 : -1;
+          }
+        } else {
+           if (Number(aValue) < Number(bValue)) {
+            return sortConfig.direction === 'ascending' ? -1 : 1;
+          }
+          if (Number(aValue) > Number(bValue)) {
+            return sortConfig.direction === 'ascending' ? 1 : -1;
+          }
+        }
+        return 0;
+      });
     }
     return items;
-  }, [investments, activeTab, date]);
-
-  const totalPages = Math.ceil(filteredInvestments.length / ITEMS_PER_PAGE);
-  const paginatedInvestments = filteredInvestments.slice(
+  }, [investmentsWithCalculatedFields, activeTab, searchQuery, typeFilter, sortConfig]);
+  
+  const totalPages = Math.ceil(filteredAndSortedInvestments.length / ITEMS_PER_PAGE);
+  const paginatedInvestments = filteredAndSortedInvestments.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+  
+  const showSymbolColumn = useMemo(() => paginatedInvestments.some(i => i.symbol), [paginatedInvestments]);
+  const showTypeColumn = useMemo(() => paginatedInvestments.some(i => i.type), [paginatedInvestments]);
+
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    setCurrentPage(1); // Reset page on tab change
+    setCurrentPage(1); 
   }
+  
+  const requestSort = (key: SortableKeys) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+  
+  const getSortIcon = (key: SortableKeys) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return <ChevronsUpDown className="h-4 w-4 ml-2" />;
+    }
+    return sortConfig.direction === 'ascending' ? <ArrowUp className="h-4 w-4 ml-2" /> : <ArrowDown className="h-4 w-4 ml-2" />;
+  };
 
   const { portfolioValue, totalInvestment, totalChange } = useMemo(() => {
-    return filteredInvestments.reduce(
+    return filteredAndSortedInvestments.reduce(
       (acc, investment) => {
         const investmentNet = (investment.history || []).reduce((sum, tx) => {
           const txValue = tx.quantity * tx.price;
           return tx.type === 'buy' ? sum + txValue : sum - txValue;
         }, 0);
 
-        const totalQuantity = (investment.history || []).reduce((quantity, tx) => {
-            if (investment.category === 'Real Estate') {
-                return quantity + (tx.type === 'buy' ? 1 : -1);
-            }
-            return quantity + (tx.type === 'buy' ? tx.quantity : -tx.quantity);
-        }, 0);
-
-        acc.portfolioValue += investment.value * totalQuantity;
+        acc.portfolioValue += investment.netValue;
         acc.totalInvestment += investmentNet;
-        acc.totalChange += investment.changeAmount * totalQuantity;
+        acc.totalChange += investment.changeAmount * investment.quantity;
         return acc;
       },
       { portfolioValue: 0, totalInvestment: 0, totalChange: 0 }
     );
-  }, [filteredInvestments]);
+  }, [filteredAndSortedInvestments]);
   
   const totalProfit = portfolioValue - totalInvestment;
   const totalProfitPercentage = totalInvestment !== 0 ? (totalProfit / totalInvestment) * 100 : 0;
@@ -353,7 +415,6 @@ export default function InvestmentsPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
                 <Skeleton className="h-10 w-80" />
-                <Skeleton className="h-9 w-60" />
             </div>
             <Card><CardHeader><Skeleton className="h-6 w-48" /></CardHeader><CardContent><Skeleton className="h-24 w-full" /></CardContent></Card>
             <Card><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent><Skeleton className="h-48 w-full" /></CardContent></Card>
@@ -374,8 +435,8 @@ export default function InvestmentsPage() {
           </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Tabs defaultValue="All" onValueChange={handleTabChange} value={activeTab}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        <Tabs defaultValue="All" onValueChange={handleTabChange} value={activeTab} className="lg:col-span-2">
           <TabsList>
             {portfolioCategories.map((category) => (
               <TabsTrigger key={category} value={category}>
@@ -384,43 +445,24 @@ export default function InvestmentsPage() {
             ))}
           </TabsList>
         </Tabs>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              id="date"
-              variant={"outline"}
-              size="sm"
-              className={cn(
-                "w-[240px] justify-start text-left font-normal",
-                !date && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {date?.from ? (
-                date.to ? (
-                  <>
-                    {format(date.from, "LLL dd, y")} -{" "}
-                    {format(date.to, "LLL dd, y")}
-                  </>
-                ) : (
-                  format(date.from, "LLL dd, y")
-                )
-              ) : (
-                <span>Filter by date</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={date?.from}
-              selected={date}
-              onSelect={setDate}
-              numberOfMonths={2}
+        <div className="flex items-center gap-2">
+            <Input 
+                placeholder="Search by name or symbol..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
             />
-          </PopoverContent>
-        </Popover>
+            {uniqueInvestmentTypes.length > 1 && <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                    {uniqueInvestmentTypes.map(type => (
+                        <SelectItem key={type} value={type} className="capitalize">{type === 'all' ? 'All Types' : type}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>}
+        </div>
       </div>
 
       <Card>
@@ -468,25 +510,39 @@ export default function InvestmentsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Symbol / Type</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-                <TableHead className="text-right">Today's Change</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead onClick={() => requestSort('name')} className="cursor-pointer">
+                    <div className="flex items-center">Name {getSortIcon('name')}</div>
+                </TableHead>
+                {activeTab === 'All' && <TableHead onClick={() => requestSort('category')} className="cursor-pointer">
+                    <div className="flex items-center">Category {getSortIcon('category')}</div>
+                </TableHead>}
+                {showSymbolColumn && <TableHead>Symbol</TableHead>}
+                {showTypeColumn && <TableHead>Type</TableHead>}
+                <TableHead className="text-right cursor-pointer" onClick={() => requestSort('quantity')}>
+                    <div className="flex items-center justify-end">Quantity {getSortIcon('quantity')}</div>
+                </TableHead>
+                <TableHead className="text-right cursor-pointer" onClick={() => requestSort('value')}>
+                    <div className="flex items-center justify-end">Price {getSortIcon('value')}</div>
+                </TableHead>
+                <TableHead className="text-right cursor-pointer" onClick={() => requestSort('netValue')}>
+                    <div className="flex items-center justify-end">Value {getSortIcon('netValue')}</div>
+                </TableHead>
+                <TableHead className="text-right cursor-pointer" onClick={() => requestSort('change')}>
+                    <div className="flex items-center justify-end">Today's Change {getSortIcon('change')}</div>
+                </TableHead>
+                <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedInvestments.map((investment) => (
                 <TableRow key={investment.id}>
                   <TableCell className="font-medium">{investment.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{investment.category}</Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{investment.symbol || investment.type || 'N/A'}</TableCell>
+                  {activeTab === 'All' && <TableCell><Badge variant="outline">{investment.category}</Badge></TableCell>}
+                  {showSymbolColumn && <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>}
+                  {showTypeColumn && <TableCell className="text-muted-foreground">{investment.type || 'N/A'}</TableCell>}
                   <TableCell className="text-right font-medium">{formatQuantity(investment)}</TableCell>
                   <TableCell className="text-right font-medium">{formatAmount(investment.value, investment.currency)}</TableCell>
+                  <TableCell className="text-right font-medium">{formatAmount(investment.netValue, investment.currency)}</TableCell>
                   <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     <div className="flex items-center justify-end">
                       {investment.change >= 0 ? <ArrowUp className="h-4 w-4 mr-1" /> : <ArrowDown className="h-4 w-4 mr-1" />}
@@ -603,3 +659,5 @@ export default function InvestmentsPage() {
     </div>
   );
 }
+
+    

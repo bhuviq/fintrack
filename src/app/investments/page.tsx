@@ -45,7 +45,7 @@ import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 
 const ITEMS_PER_PAGE = 10;
-type SortableKeys = keyof Investment | 'quantity' | 'netValue';
+type SortableKeys = keyof Investment | 'quantity' | 'netValue' | 'symbol' | 'type';
 
 export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<Investment[]>([]);
@@ -109,11 +109,6 @@ export default function InvestmentsPage() {
     [investments]
   );
   
-  const uniqueInvestmentTypes = useMemo(() => {
-    const types = new Set(investments.map(inv => inv.type).filter(Boolean));
-    return ['all', ...Array.from(types)] as string[];
-  }, [investments]);
-
   const investmentsWithCalculatedFields = useMemo(() => {
     return investments.map(investment => {
       const { category, history } = investment;
@@ -129,12 +124,21 @@ export default function InvestmentsPage() {
     });
   }, [investments]);
 
+  const tabFilteredInvestments = useMemo(() => {
+     if (activeTab === 'All') {
+      return investmentsWithCalculatedFields;
+    }
+    return investmentsWithCalculatedFields.filter((i) => i.category === activeTab);
+  }, [investmentsWithCalculatedFields, activeTab]);
+
+  const uniqueInvestmentTypes = useMemo(() => {
+    const types = new Set(tabFilteredInvestments.map(inv => inv.type).filter(Boolean));
+    return ['all', ...Array.from(types)] as string[];
+  }, [tabFilteredInvestments]);
 
   const filteredAndSortedInvestments = useMemo(() => {
-    let items = [...investmentsWithCalculatedFields];
-    if (activeTab !== 'All') {
-      items = items.filter((i) => i.category === activeTab);
-    }
+    let items = [...tabFilteredInvestments];
+    
     if (searchQuery) {
         items = items.filter(i => 
             i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -171,7 +175,7 @@ export default function InvestmentsPage() {
       });
     }
     return items;
-  }, [investmentsWithCalculatedFields, activeTab, searchQuery, typeFilter, sortConfig]);
+  }, [tabFilteredInvestments, searchQuery, typeFilter, sortConfig]);
   
   const totalPages = Math.ceil(filteredAndSortedInvestments.length / ITEMS_PER_PAGE);
   const paginatedInvestments = filteredAndSortedInvestments.slice(
@@ -185,6 +189,7 @@ export default function InvestmentsPage() {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+    setTypeFilter('all');
     setCurrentPage(1); 
   }
   
@@ -452,7 +457,7 @@ export default function InvestmentsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full"
             />
-            {uniqueInvestmentTypes.length > 1 && <Select value={typeFilter} onValueChange={setTypeFilter}>
+            {uniqueInvestmentTypes.length > 2 && <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Filter by type" />
                 </SelectTrigger>
@@ -516,8 +521,8 @@ export default function InvestmentsPage() {
                 {activeTab === 'All' && <TableHead onClick={() => requestSort('category')} className="cursor-pointer">
                     <div className="flex items-center">Category {getSortIcon('category')}</div>
                 </TableHead>}
-                {showSymbolColumn && <TableHead>Symbol</TableHead>}
-                {showTypeColumn && <TableHead>Type</TableHead>}
+                {showSymbolColumn && <TableHead className="cursor-pointer" onClick={() => requestSort('symbol')}><div className="flex items-center">Symbol {getSortIcon('symbol')}</div></TableHead>}
+                {showTypeColumn && <TableHead className="cursor-pointer" onClick={() => requestSort('type')}><div className="flex items-center">Type {getSortIcon('type')}</div></TableHead>}
                 <TableHead className="text-right cursor-pointer" onClick={() => requestSort('quantity')}>
                     <div className="flex items-center justify-end">Quantity {getSortIcon('quantity')}</div>
                 </TableHead>
@@ -660,4 +665,5 @@ export default function InvestmentsPage() {
   );
 }
 
+    
     

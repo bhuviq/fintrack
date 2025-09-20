@@ -87,11 +87,11 @@ export function InvestmentForm({
   }, [investmentCategory]);
   
   const showType = React.useMemo(() => {
-    return ['Mutual Fund', 'Real Estate', 'Gold'].includes(investmentCategory);
+    return ['Mutual Funds', 'Real Estate', 'Gold'].includes(investmentCategory);
   }, [investmentCategory]);
   
   const typeOptions = React.useMemo(() => {
-    if (investmentCategory === 'Mutual Fund') {
+    if (investmentCategory === 'Mutual Funds') {
         return ['Index', 'Tax Saver', 'Large Cap', 'Mid Cap', 'Small Cap', 'Multi Cap', 'Direct fund'];
     }
     if (investmentCategory === 'Real Estate') {

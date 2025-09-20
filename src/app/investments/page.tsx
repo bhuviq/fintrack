@@ -124,11 +124,19 @@ export default function InvestmentsPage() {
     });
   }, [investments]);
   
-  const uniqueInvestmentTypes = useMemo(() => {
-    const itemsInTab = investments.filter(inv => activeTab === 'All' || inv.category === activeTab);
-    const types = new Set(itemsInTab.map(inv => inv.type).filter(Boolean));
-    return ['all', ...Array.from(types)] as string[];
+  const investmentsInTab = useMemo(() => {
+    return investments.filter(inv => activeTab === 'All' || inv.category === activeTab);
   }, [investments, activeTab]);
+
+  const uniqueInvestmentTypes = useMemo(() => {
+    const types = new Set(investmentsInTab.map(inv => inv.type).filter(Boolean));
+    return ['all', ...Array.from(types)] as string[];
+  }, [investmentsInTab]);
+
+  const showTypeFilter = useMemo(() => {
+    return investmentsInTab.some(inv => inv.type);
+  }, [investmentsInTab]);
+
 
   const filteredAndSortedInvestments = useMemo(() => {
     let items = investmentsWithCalculatedFields.filter(i => activeTab === 'All' || i.category === activeTab);
@@ -452,7 +460,7 @@ export default function InvestmentsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full"
             />
-            {uniqueInvestmentTypes.length > 2 && <Select value={typeFilter} onValueChange={setTypeFilter}>
+            {showTypeFilter && <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Filter by type" />
                 </SelectTrigger>

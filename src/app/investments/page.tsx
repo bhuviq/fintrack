@@ -45,7 +45,7 @@ import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 
 const ITEMS_PER_PAGE = 10;
-type SortableKeys = keyof Investment | 'quantity' | 'netValue' | 'symbol' | 'type';
+type SortableKeys = keyof Investment | 'quantity' | 'netValue';
 
 export default function InvestmentsPage() {
   const [investments, setInvestments] = useState<Investment[]>([]);
@@ -123,21 +123,15 @@ export default function InvestmentsPage() {
       return { ...investment, quantity, netValue };
     });
   }, [investments]);
-
-  const tabFilteredInvestments = useMemo(() => {
-     if (activeTab === 'All') {
-      return investmentsWithCalculatedFields;
-    }
-    return investmentsWithCalculatedFields.filter((i) => i.category === activeTab);
-  }, [investmentsWithCalculatedFields, activeTab]);
-
+  
   const uniqueInvestmentTypes = useMemo(() => {
-    const types = new Set(tabFilteredInvestments.map(inv => inv.type).filter(Boolean));
+    const itemsInTab = investments.filter(inv => activeTab === 'All' || inv.category === activeTab);
+    const types = new Set(itemsInTab.map(inv => inv.type).filter(Boolean));
     return ['all', ...Array.from(types)] as string[];
-  }, [tabFilteredInvestments]);
+  }, [investments, activeTab]);
 
   const filteredAndSortedInvestments = useMemo(() => {
-    let items = [...tabFilteredInvestments];
+    let items = investmentsWithCalculatedFields.filter(i => activeTab === 'All' || i.category === activeTab);
     
     if (searchQuery) {
         items = items.filter(i => 
@@ -148,10 +142,11 @@ export default function InvestmentsPage() {
     if (typeFilter !== 'all') {
         items = items.filter(i => i.type === typeFilter);
     }
+
     if (sortConfig !== null) {
       items.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
+        const aValue = a[sortConfig.key as keyof Investment];
+        const bValue = b[sortConfig.key as keyof Investment];
 
         if (aValue === undefined || aValue === null) return 1;
         if (bValue === undefined || bValue === null) return -1;
@@ -175,7 +170,7 @@ export default function InvestmentsPage() {
       });
     }
     return items;
-  }, [tabFilteredInvestments, searchQuery, typeFilter, sortConfig]);
+  }, [investmentsWithCalculatedFields, activeTab, searchQuery, typeFilter, sortConfig]);
   
   const totalPages = Math.ceil(filteredAndSortedInvestments.length / ITEMS_PER_PAGE);
   const paginatedInvestments = filteredAndSortedInvestments.slice(
@@ -664,6 +659,3 @@ export default function InvestmentsPage() {
     </div>
   );
 }
-
-    
-    

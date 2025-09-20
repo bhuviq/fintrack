@@ -92,13 +92,13 @@ export function InvestmentForm({
   
   const typeOptions = React.useMemo(() => {
     if (investmentCategory === 'Mutual Fund') {
-        return ['Equity', 'Debt', 'Hybrid'];
+        return ['Index', 'Tax Saver', 'Large Cap', 'Mid Cap', 'Small Cap', 'Multi Cap', 'Direct fund'];
     }
     if (investmentCategory === 'Real Estate') {
         return ['Residential', 'Commercial'];
     }
     if (investmentCategory === 'Gold') {
-        return ['Physical', 'Bonds', 'ETF'];
+        return ['Physical', 'Digital', 'Sovereign'];
     }
     return [];
   }, [investmentCategory]);

@@ -134,6 +134,7 @@ export default function InvestmentsPage() {
   }, [investmentsInTab]);
 
   const showTypeFilter = useMemo(() => {
+    // Show filter if there is at least one item with a type in the current tab's investments
     return investmentsInTab.some(inv => inv.type);
   }, [investmentsInTab]);
 

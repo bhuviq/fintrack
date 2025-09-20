@@ -32,7 +32,19 @@ export const addInvestment = async (investmentData: NewInvestment): Promise<stri
 
 export const updateInvestment = async (id: string, investmentData: Partial<Investment>): Promise<void> => {
     const investmentDoc = doc(db, "investments", id);
-    await updateDoc(investmentDoc, investmentData);
+    const updateData = { ...investmentData };
+
+    // Firestore does not store undefined values. If a field should be removed,
+    // it's better to explicitly handle it, but for this case, we just ensure
+    // we don't send `undefined` which can cause issues.
+    if (updateData.symbol === undefined) {
+        delete updateData.symbol;
+    }
+    if (updateData.type === undefined) {
+        delete updateData.type;
+    }
+
+    await updateDoc(investmentDoc, updateData);
 };
 
 export const deleteInvestment = async (id: string): Promise<void> => {

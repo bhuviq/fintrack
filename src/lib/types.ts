@@ -87,6 +87,7 @@ export interface Investment {
     userId: string;
     name: string;
     symbol?: string;
+    type?: string;
     value: number;
     change: number;
     changeAmount: number;

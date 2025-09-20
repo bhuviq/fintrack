@@ -42,6 +42,7 @@ const investmentSchema = z.object({
   }),
   category: z.string().min(1, { message: 'Please select a category.' }),
   symbol: z.string().optional(),
+  type: z.string().optional(),
   value: z.coerce
     .number()
     .positive({ message: 'Value must be a positive number.' }),
@@ -73,14 +74,30 @@ export function InvestmentForm({
       name: '',
       category: '',
       symbol: '',
+      type: '',
       value: undefined,
       currency: globalCurrency,
     },
   });
 
   const investmentCategory = form.watch('category');
+  
   const showSymbol = React.useMemo(() => {
-    return ['Stocks', 'Bonds', 'Mutual Funds'].includes(investmentCategory);
+    return ['Stocks', 'ETF', 'Cryptocurrency'].includes(investmentCategory);
+  }, [investmentCategory]);
+  
+  const showType = React.useMemo(() => {
+    return ['Mutual Fund', 'Real Estate'].includes(investmentCategory);
+  }, [investmentCategory]);
+  
+  const typeOptions = React.useMemo(() => {
+    if (investmentCategory === 'Mutual Fund') {
+        return ['Equity', 'Debt', 'Hybrid'];
+    }
+    if (investmentCategory === 'Real Estate') {
+        return ['Residential', 'Commercial'];
+    }
+    return [];
   }, [investmentCategory]);
 
 
@@ -92,6 +109,7 @@ export function InvestmentForm({
           name: investment.name,
           category: investment.category,
           symbol: investment.symbol,
+          type: investment.type,
           value: investment.value,
           currency: investment.currency,
         });
@@ -100,6 +118,7 @@ export function InvestmentForm({
           name: '',
           category: '',
           symbol: '',
+          type: '',
           value: undefined,
           currency: globalCurrency,
         });
@@ -108,7 +127,14 @@ export function InvestmentForm({
   }, [investment, form, isOpen, globalCurrency]);
 
   const handleSubmit = (values: InvestmentFormValues) => {
-    onSubmit({ ...values, id: investment?.id });
+    const submissionData = { ...values };
+    if (!showSymbol) {
+        delete submissionData.symbol;
+    }
+    if (!showType) {
+        delete submissionData.type;
+    }
+    onSubmit({ ...submissionData, id: investment?.id });
     onOpenChange(false);
   };
 
@@ -150,7 +176,10 @@ export function InvestmentForm({
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('type', ''); // Reset type when category changes
+                    }}
                     value={field.value}
                   >
                     <FormControl>
@@ -183,6 +212,32 @@ export function InvestmentForm({
                 </FormItem>
               )}
             />}
+            {showType && (
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={`Select a ${investmentCategory} type`} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {typeOptions.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}

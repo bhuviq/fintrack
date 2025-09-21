@@ -32,11 +32,13 @@ export const getTransactions = async ({
     limitPerPage = 10,
     filters
 }: GetTransactionsParams): Promise<{ transactions: Transaction[], nextCursor: string | null }> => {
-    // Firestore security rules will enforce that only the current user's documents are returned.
-    // We construct the query on the public collection.
+    const userId = getUserId();
     let q = query(transactionsCollection);
 
-    // Apply filters one at a time to avoid composite index requirement
+    // Always filter by the current user. This is crucial for security and for Firestore indexing.
+    q = query(q, where("userId", "==", userId));
+
+    // Apply other filters one at a time.
     if (filters.date?.from) {
         q = query(q, where("date", ">=", filters.date.from.toISOString().split('T')[0]));
     }
@@ -52,7 +54,6 @@ export const getTransactions = async ({
         q = query(q, where("accountId", "==", filters.account));
     }
     
-    // Order by date to show most recent first. This is the main ordering.
     q = query(q, orderBy("date", "desc"));
     
     if (page === 'next' && cursor) {

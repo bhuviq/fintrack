@@ -8,7 +8,7 @@ type DefaultCategory = Omit<Category, 'id' | 'userId'>;
 export const DEFAULT_EXPENSE_CATEGORIES: DefaultCategory[] = [
   { name: 'Groceries', type: 'expense', isDefault: true },
   { name: 'Utilities', type: 'expense', isDefault: true },
-  { name: 'Rent/Mortgage', type: 'expense', isDefault: true },
+  { name: 'Rent or Mortgage', type: 'expense', isDefault: true },
   { name: 'Transportation', type: 'expense', isDefault: true },
   { name: 'Entertainment', type: 'expense', isDefault: true },
   { name: 'Healthcare', type: 'expense', isDefault: true },

@@ -34,20 +34,19 @@ export const getTransactions = async ({
     
     let q = query(transactionsCollection, where("userId", "==", userId));
 
-    // Apply filters
+    // Apply filters one at a time to avoid composite index requirement
     if (filters.date?.from) {
         q = query(q, where("date", ">=", filters.date.from.toISOString().split('T')[0]));
     }
     if (filters.date?.to) {
         q = query(q, where("date", "<=", filters.date.to.toISOString().split('T')[0]));
     }
+
     if (filters.type && filters.type !== 'all') {
         q = query(q, where("type", "==", filters.type));
-    }
-    if (filters.category && filters.category !== 'all') {
+    } else if (filters.category && filters.category !== 'all') {
         q = query(q, where("category", "==", filters.category));
-    }
-    if (filters.account && filters.account !== 'all') {
+    } else if (filters.account && filters.account !== 'all') {
         q = query(q, where("accountId", "==", filters.account));
     }
     

@@ -305,6 +305,10 @@ export default function TransactionsPage() {
     )
   }
 
+  const isTypeFiltered = typeFilter !== 'all';
+  const isAccountFiltered = accountFilter !== 'all';
+  const isCategoryFiltered = categoryFilter !== 'all';
+
   return (
     <>
       <div className="flex items-start sm:items-center justify-between mb-6 flex-col sm:flex-row gap-4">
@@ -361,7 +365,11 @@ export default function TransactionsPage() {
             </PopoverContent>
         </Popover>
 
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select 
+          value={typeFilter} 
+          onValueChange={(value) => { setTypeFilter(value); setAccountFilter('all'); setCategoryFilter('all'); }}
+          disabled={isAccountFiltered || isCategoryFiltered}
+        >
             <SelectTrigger className="w-auto sm:w-[150px] text-sm h-9">
                 <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
@@ -374,7 +382,11 @@ export default function TransactionsPage() {
             </SelectContent>
         </Select>
 
-        <Select value={accountFilter} onValueChange={setAccountFilter}>
+        <Select 
+          value={accountFilter} 
+          onValueChange={(value) => { setAccountFilter(value); setTypeFilter('all'); setCategoryFilter('all'); }}
+          disabled={isTypeFiltered || isCategoryFiltered}
+        >
             <SelectTrigger className="w-auto sm:w-[180px] text-sm h-9">
                 <SelectValue placeholder="Filter by account" />
             </SelectTrigger>
@@ -386,7 +398,11 @@ export default function TransactionsPage() {
             </SelectContent>
         </Select>
 
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+        <Select 
+          value={categoryFilter} 
+          onValueChange={(value) => { setCategoryFilter(value); setTypeFilter('all'); setAccountFilter('all'); }}
+          disabled={isTypeFiltered || isAccountFiltered}
+        >
             <SelectTrigger className="w-auto sm:w-[180px] text-sm h-9">
                 <SelectValue placeholder="Filter by category" />
             </SelectTrigger>

@@ -178,22 +178,28 @@ export default function GoalsPage() {
     }).format(amount);
   };
 
-  if (isLoading) {
-    return (
-        <div className="space-y-6">
-             <div className="flex items-center justify-between mb-6">
-                <div>
-                    <Skeleton className="h-8 w-48" />
-                    <Skeleton className="h-4 w-64 mt-2" />
-                </div>
-                <Skeleton className="h-10 w-36" />
-            </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                 {[...Array(3)].map((_, i) => <Card key={i} className="h-48"><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-full w-full" /></CardContent></Card>)}
-            </div>
-        </div>
-    )
-  }
+  const renderSkeletons = () => (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {[...Array(3)].map((_, i) => (
+            <Card key={i} className="flex flex-col relative">
+                <CardContent className="flex-1 p-6">
+                    <Skeleton className="h-6 w-3/4 mb-2" />
+                    <Skeleton className="h-8 w-1/2" />
+                    <Skeleton className="h-4 w-1/3 mt-1" />
+                </CardContent>
+                <CardFooter className="p-6 pt-0">
+                    <div className="w-full">
+                        <div className="flex justify-between mb-1">
+                            <Skeleton className="h-4 w-1/4" />
+                            <Skeleton className="h-4 w-1/6" />
+                        </div>
+                        <Skeleton className="h-4 w-full" />
+                    </div>
+                </CardFooter>
+            </Card>
+        ))}
+    </div>
+  );
 
   return (
     <>
@@ -207,64 +213,71 @@ export default function GoalsPage() {
           Add Goal
         </Button>
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {goals.map((goal) => {
-          const currentAmount = goal.current || 0;
-          const percentage = goal.target > 0 ? (currentAmount / goal.target) * 100 : 0;
-          const goalCurrency = goal.currency || 'USD';
+      {isLoading ? renderSkeletons() : goals.length > 0 ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {goals.map((goal) => {
+            const currentAmount = goal.current || 0;
+            const percentage = goal.target > 0 ? (currentAmount / goal.target) * 100 : 0;
+            const goalCurrency = goal.currency || 'USD';
 
-          return (
-            <Card key={goal.id} className="flex flex-col relative">
-               <div className="absolute top-2 right-2 z-10">
-                  <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handleAddContribution(goal)}>
-                              <Landmark className="mr-2 h-4 w-4" />
-                              Add Funds
-                          </DropdownMenuItem>
-                           <DropdownMenuItem onClick={() => handleViewHistory(goal)}>
-                              <History className="mr-2 h-4 w-4" />
-                              View History
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleEditGoal(goal)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteGoal(goal)}>
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                          </DropdownMenuItem>
-                      </DropdownMenuContent>
-                  </DropdownMenu>
-              </div>
-              <CardContent className="flex-1 p-6">
-                <CardTitle className="mb-2 pr-10">{goal.name}</CardTitle>
-                <p className="text-2xl font-bold text-primary">
-                  {formatGoalCurrency(currentAmount, goalCurrency)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  saved of {formatGoalCurrency(goal.target, goalCurrency)}
-                </p>
-              </CardContent>
-              <CardFooter className="p-6 pt-0">
-                <div className="w-full">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Progress</span>
-                    <span className="font-medium">{percentage.toFixed(0)}%</span>
-                  </div>
-                  <Progress value={percentage} />
+            return (
+              <Card key={goal.id} className="flex flex-col relative">
+                <div className="absolute top-2 right-2 z-10">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleAddContribution(goal)}>
+                                <Landmark className="mr-2 h-4 w-4" />
+                                Add Funds
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleViewHistory(goal)}>
+                                <History className="mr-2 h-4 w-4" />
+                                View History
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleEditGoal(goal)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteGoal(goal)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
-              </CardFooter>
-            </Card>
-          );
-        })}
-      </div>
+                <CardContent className="flex-1 p-6">
+                  <CardTitle className="mb-2 pr-10">{goal.name}</CardTitle>
+                  <p className="text-2xl font-bold text-primary">
+                    {formatGoalCurrency(currentAmount, goalCurrency)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    saved of {formatGoalCurrency(goal.target, goalCurrency)}
+                  </p>
+                </CardContent>
+                <CardFooter className="p-6 pt-0">
+                  <div className="w-full">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Progress</span>
+                      <span className="font-medium">{percentage.toFixed(0)}%</span>
+                    </div>
+                    <Progress value={percentage} />
+                  </div>
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center p-8 border-2 border-dashed rounded-lg">
+          <p className="text-muted-foreground">You haven't set any goals yet.</p>
+          <p className="text-sm text-muted-foreground">Click "Add Goal" to get started.</p>
+        </div>
+      )}
 
       <GoalForm
         isOpen={isGoalFormOpen}

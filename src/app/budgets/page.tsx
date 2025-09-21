@@ -70,7 +70,7 @@ export default function BudgetsPage() {
             getInvestments(),
         ]);
         setBudgets(fetchedBudgets);
-        setTransactions(fetchedTransactions);
+        setTransactions(fetchedTransactions.transactions);
         setCategories(fetchedCategories);
         setInvestments(fetchedInvestments);
     } catch (error: any) {
@@ -223,23 +223,23 @@ export default function BudgetsPage() {
     currentPage * ITEMS_PER_PAGE
   );
   
-  if (isLoading) {
-    return (
-        <Card>
-            <CardHeader>
-                <Skeleton className="h-8 w-24" />
-                <Skeleton className="h-6 w-48" />
-                <div className="flex flex-wrap items-center gap-2 pt-4">
-                    {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-9 w-24" />)}
+  const renderSkeletons = () => (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {[...Array(Math.min(ITEMS_PER_PAGE, 3))].map((_, i) => (
+            <div key={i} className="flex flex-col gap-2 p-4 border rounded-lg">
+                <div className="flex justify-between items-baseline">
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="h-4 w-24" />
                 </div>
-            </CardHeader>
-            <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-lg" />)}
-            </CardContent>
-        </Card>
-    )
-  }
-
+                <Skeleton className="h-4 w-full" />
+                <div className="flex justify-between items-baseline text-sm">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-20" />
+                </div>
+            </div>
+        ))}
+    </div>
+  );
 
   return (
     <>
@@ -299,49 +299,57 @@ export default function BudgetsPage() {
             </Popover>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {paginatedBudgets.map((budget) => {
-            const percentage = budget.total > 0 ? (budget.spent / budget.total) * 100 : 0;
-            const remaining = budget.total - budget.spent;
+        <CardContent>
+          {isLoading ? renderSkeletons() : paginatedBudgets.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {paginatedBudgets.map((budget) => {
+                const percentage = budget.total > 0 ? (budget.spent / budget.total) * 100 : 0;
+                const remaining = budget.total - budget.spent;
 
-            return (
-              <div key={budget.id} className="flex flex-col gap-2 p-4 border rounded-lg relative">
-                 <div className="absolute top-2 right-2">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handleEditBudget(budget)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteBudget(budget)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-                <div className="flex justify-between items-baseline">
-                  <span className="font-semibold text-lg pr-10">{budget.category}</span>
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {formatAmount(budget.spent, budget.currency)} / {formatAmount(budget.total, budget.currency)}
-                  </span>
-                </div>
-                <Progress value={percentage} indicatorClassName={getProgressColor(percentage)} />
-                <div className="flex justify-between items-baseline text-sm">
-                  <span className="text-muted-foreground">{percentage.toFixed(0)}% spent</span>
-                  <span className={`${remaining >= 0 ? 'text-green-600' : 'text-destructive'} font-medium`}>
-                    {formatAmount(Math.abs(remaining), budget.currency)} {remaining >=0 ? 'left' : 'over'}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+                return (
+                  <div key={budget.id} className="flex flex-col gap-2 p-4 border rounded-lg relative">
+                    <div className="absolute top-2 right-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onClick={() => handleEditBudget(budget)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteBudget(budget)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                    <div className="flex justify-between items-baseline">
+                      <span className="font-semibold text-lg pr-10">{budget.category}</span>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {formatAmount(budget.spent, budget.currency)} / {formatAmount(budget.total, budget.currency)}
+                      </span>
+                    </div>
+                    <Progress value={percentage} indicatorClassName={getProgressColor(percentage)} />
+                    <div className="flex justify-between items-baseline text-sm">
+                      <span className="text-muted-foreground">{percentage.toFixed(0)}% spent</span>
+                      <span className={`${remaining >= 0 ? 'text-green-600' : 'text-destructive'} font-medium`}>
+                        {formatAmount(Math.abs(remaining), budget.currency)} {remaining >=0 ? 'left' : 'over'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center p-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                No budgets configured.
+            </div>
+          )}
         </CardContent>
         {totalPages > 1 && (
             <CardFooter className="flex items-center justify-between p-4 border-t">

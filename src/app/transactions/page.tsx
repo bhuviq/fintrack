@@ -285,40 +285,13 @@ export default function TransactionsPage() {
     }).format(amount);
   };
   
-  if (isLoading && serverFetchedTransactions.length === 0) {
-    return (
-        <div className="space-y-6">
-             <div className="flex items-center justify-between mb-6">
-                <div>
-                    <Skeleton className="h-8 w-48" />
-                    <Skeleton className="h-4 w-64 mt-2" />
-                </div>
-                <div className="flex items-center gap-2">
-                    <Skeleton className="h-9 w-60" />
-                    <Skeleton className="h-10 w-40" />
-                </div>
-            </div>
-            <Card>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                {[...Array(6)].map((_, i) => <TableHead key={i}><Skeleton className="h-5 w-24" /></TableHead>)}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {[...Array(clientPageSize)].map((_, i) => (
-                                <TableRow key={`skel-${i}`}>
-                                    {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </div>
-    )
-  }
+  const renderTableSkeletons = () => (
+      [...Array(clientPageSize)].map((_, i) => (
+          <TableRow key={`skel-${i}`}>
+              {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
+          </TableRow>
+      ))
+  );
 
   return (
     <>
@@ -438,19 +411,13 @@ export default function TransactionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && [...Array(clientPageSize)].map((_, i) => (
-                  <TableRow key={`skel-${i}`}>
-                      {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
-                  </TableRow>
-              ))}
-              {!isLoading && paginatedTransactions.length === 0 && (
+              {isLoading ? renderTableSkeletons() : paginatedTransactions.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                         No transactions found for the selected filters.
                     </TableCell>
                 </TableRow>
-              )}
-              {!isLoading && paginatedTransactions.map((transaction) => {
+              ) : paginatedTransactions.map((transaction) => {
                 const fromAccount = accountMap.get(transaction.accountId);
                 const toAccount = transaction.toAccountId ? accountMap.get(transaction.toAccountId) : null;
                 const currency = fromAccount ? fromAccount.currency : globalCurrency;

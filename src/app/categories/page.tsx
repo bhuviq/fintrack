@@ -106,31 +106,19 @@ export default function CategoriesPage() {
     setEditingCategory(null);
   };
 
-  if (isLoading) {
-    return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <Skeleton className="h-8 w-48" />
-                    <Skeleton className="h-4 w-64 mt-2" />
-                </div>
-                <Skeleton className="h-10 w-36" />
-            </div>
-            <Card>
-                <CardContent className="p-0">
-                    <div className="p-4 border-b">
-                        <Skeleton className="h-10 w-64" />
-                    </div>
-                    <div className="p-4">
-                        <Skeleton className="h-12 w-full" />
-                        <Skeleton className="h-12 w-full mt-2" />
-                        <Skeleton className="h-12 w-full mt-2" />
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-    )
-  }
+  const renderSkeletonList = () => (
+    <ul className="divide-y">
+      {[...Array(5)].map((_, i) => (
+        <li key={i} className="flex items-center justify-between p-4">
+          <Skeleton className="h-5 w-32" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8" />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
   
   return (
     <>
@@ -161,7 +149,7 @@ export default function CategoriesPage() {
             </div>
             {categoryTypes.map((type) => (
               <TabsContent key={type} value={type} className="m-0">
-                {categories.filter(c => c.type === type).length > 0 ? (
+                {isLoading ? renderSkeletonList() : categories.filter(c => c.type === type).length > 0 ? (
                   <ul className="divide-y">
                     {categories.filter(c => c.type === type).map((category) => (
                       <li key={category.id} className="flex items-center justify-between p-4 hover:bg-muted/50">

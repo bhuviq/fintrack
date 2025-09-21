@@ -34,28 +34,24 @@ export default function InsurancePage() {
   const [insuranceToDelete, setInsuranceToDelete] = React.useState<Insurance | null>(null);
 
   const fetchData = React.useCallback(async () => {
-    // Don't set loading to true here, to avoid flashing on re-fetches
+    setIsLoading(true);
     try {
         const fetchedInsurances = await getInsurances();
         setInsurances(fetchedInsurances);
     } catch (error: any) {
         console.error("Failed to fetch insurances:", error);
-        // Only show toast if it's not the initial load empty error
-        if (insurances.length > 0) {
-            toast({
-                variant: "destructive",
-                title: "Network Error",
-                description: "Could not fetch updated insurance data.",
-            });
-        }
+        toast({
+            variant: "destructive",
+            title: "Network Error",
+            description: "Could not fetch insurance data.",
+        });
     } finally {
         setIsLoading(false);
     }
-  }, [toast, insurances.length]);
+  }, [toast]);
 
   React.useEffect(() => {
     if (user) {
-        setIsLoading(true);
         fetchData();
     }
   }, [user, fetchData]);
@@ -154,22 +150,36 @@ export default function InsurancePage() {
     return <Badge variant="secondary">Active</Badge>;
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-64 mt-2" />
-          </div>
-          <Skeleton className="h-10 w-36" />
-        </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => <Card key={i} className="h-64"><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-full w-full" /></CardContent></Card>)}
-        </div>
-      </div>
-    );
-  }
+  const renderSkeletons = () => (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {[...Array(3)].map((_, i) => (
+            <Card key={i} className="flex flex-col">
+                <CardHeader>
+                    <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-4">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <div>
+                                <Skeleton className="h-6 w-32" />
+                                <Skeleton className="h-4 w-24 mt-1" />
+                            </div>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="flex-1 space-y-4">
+                    <div className="space-y-2">
+                        <div className="flex justify-between"><Skeleton className="h-4 w-16" /><Skeleton className="h-4 w-20" /></div>
+                        <div className="flex justify-between"><Skeleton className="h-4 w-16" /><Skeleton className="h-4 w-20" /></div>
+                        <div className="flex justify-between"><Skeleton className="h-4 w-16" /><Skeleton className="h-4 w-20" /></div>
+                    </div>
+                </CardContent>
+                <CardFooter className="flex justify-between items-center">
+                    <Skeleton className="h-6 w-20" />
+                    <Skeleton className="h-4 w-24" />
+                </CardFooter>
+            </Card>
+        ))}
+    </div>
+  );
 
   return (
     <>
@@ -184,7 +194,7 @@ export default function InsurancePage() {
         </Button>
       </div>
 
-      {insurances.length > 0 ? (
+      {isLoading ? renderSkeletons() : insurances.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {insurances.map((policy) => {
             const daysToRenewal = getDaysUntilRenewal(policy.endDate);

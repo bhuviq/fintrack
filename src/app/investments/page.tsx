@@ -404,24 +404,22 @@ export default function InvestmentsPage() {
         maximumFractionDigits: 2,
     });
   };
-
-  if(isLoading && serverFetchedInvestments.length === 0) {
-    return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <Skeleton className="h-8 w-64" />
-                    <Skeleton className="h-4 w-80 mt-2" />
-                </div>
-                <Skeleton className="h-10 w-40" />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-                <Skeleton className="h-10 w-80" />
-            </div>
-            <Card><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent><Skeleton className="h-48 w-full" /></CardContent></Card>
-        </div>
-    )
-  }
+  
+  const renderTableSkeletons = () => (
+    [...Array(pageSize)].map((_, i) => (
+      <TableRow key={`skel-${i}`}>
+        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+        {activeCategory === 'All' && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
+        {showSymbolColumn && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
+        {showTypeColumn && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
+        <TableCell><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+        <TableCell><MoreHorizontal className="h-4 w-4" /></TableCell>
+      </TableRow>
+    ))
+  );
 
   return (
     <div className="space-y-6">
@@ -438,7 +436,7 @@ export default function InvestmentsPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <Select value={activeCategory} onValueChange={handleCategoryChange}>
-          <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px]">
             <SelectValue placeholder="Filter by category" />
           </SelectTrigger>
           <SelectContent>
@@ -457,7 +455,7 @@ export default function InvestmentsPage() {
         />
         {showTypeFilter && (
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px]">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
             <SelectContent>
@@ -503,47 +501,53 @@ export default function InvestmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndSortedInvestments.map((investment) => (
-                <TableRow key={investment.id}>
-                  <TableCell className="font-medium">{investment.name}</TableCell>
-                  {activeCategory === 'All' && <TableCell><Badge variant="outline">{investment.category}</Badge></TableCell>}
-                  {showSymbolColumn && <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>}
-                  {showTypeColumn && <TableCell className="text-muted-foreground">{investment.type || 'N/A'}</TableCell>}
-                  <TableCell className="text-right font-medium">{formatQuantity(investment)}</TableCell>
-                  <TableCell className="text-right font-medium">{formatAmount(investment.value, investment.currency)}</TableCell>
-                  <TableCell className="text-right font-medium">{formatAmount(investment.netValue, investment.currency)}</TableCell>
-                  <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    <div className="flex items-center justify-end">
-                      {investment.change >= 0 ? <ArrowUp className="h-4 w-4 mr-1" /> : <ArrowDown className="h-4 w-4 mr-1" />}
-                      <span>{investment.change.toFixed(2)}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                      <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                              <DropdownMenuItem onClick={() => handleViewHistory(investment)}>
-                                  <History className="mr-2 h-4 w-4" />
-                                  View History
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleEditInvestment(investment)}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteInvestment(investment)}>
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                              </DropdownMenuItem>
-                          </DropdownMenuContent>
-                      </DropdownMenu>
-                  </TableCell>
+              {isLoading ? renderTableSkeletons() : filteredAndSortedInvestments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center h-24">No investments found.</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredAndSortedInvestments.map((investment) => (
+                  <TableRow key={investment.id}>
+                    <TableCell className="font-medium">{investment.name}</TableCell>
+                    {activeCategory === 'All' && <TableCell><Badge variant="outline">{investment.category}</Badge></TableCell>}
+                    {showSymbolColumn && <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>}
+                    {showTypeColumn && <TableCell className="text-muted-foreground">{investment.type || 'N/A'}</TableCell>}
+                    <TableCell className="text-right font-medium">{formatQuantity(investment)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatAmount(investment.value, investment.currency)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatAmount(investment.netValue, investment.currency)}</TableCell>
+                    <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className="flex items-center justify-end">
+                        {investment.change >= 0 ? <ArrowUp className="h-4 w-4 mr-1" /> : <ArrowDown className="h-4 w-4 mr-1" />}
+                        <span>{investment.change.toFixed(2)}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onClick={() => handleViewHistory(investment)}>
+                                    <History className="mr-2 h-4 w-4" />
+                                    View History
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleEditInvestment(investment)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteInvestment(investment)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

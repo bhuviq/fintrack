@@ -135,7 +135,7 @@ export default function InsurancePage() {
   const getDaysUntilRenewal = (endDate: string) => {
     const renewalDate = new Date(endDate);
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize today's date to the start of the day
+    today.setHours(0, 0, 0, 0);
     const days = differenceInDays(renewalDate, today);
     return days;
   }
@@ -264,5 +264,3 @@ export default function InsurancePage() {
     </>
   );
 }
-
-    

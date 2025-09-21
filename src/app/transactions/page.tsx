@@ -91,7 +91,7 @@ export default function TransactionsPage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageCursors, setPageCursors] = useState<{ [page: number]: string | null }>({ 1: null });
+  const [cursors, setCursors] = useState<string[]>([]);
   const [hasMore, setHasMore] = useState(false);
   
   const fetchAuxiliaryData = useCallback(async () => {
@@ -114,49 +114,59 @@ export default function TransactionsPage() {
     }
   }, [toast]);
   
-  const fetchTransactions = useCallback(async (page: number, direction: 'first' | 'next' | 'prev' = 'first') => {
-      if ((direction === 'prev' && page < 1) || (direction === 'next' && !hasMore && page > 1)) {
+ const fetchTransactions = useCallback(async (page: number, direction: 'first' | 'next' | 'prev' = 'first') => {
+    if ((direction === 'prev' && page < 1) || (direction === 'next' && !hasMore && page > 1)) {
         return;
-      }
+    }
     
-      setIsLoading(true);
-      try {
-        const cursor = direction === 'next' ? pageCursors[page - 1] : pageCursors[page + 1];
-        
+    setIsLoading(true);
+    try {
+        const cursor = direction === 'next' ? cursors[cursors.length - 1] : undefined;
+
         const { transactions: fetchedTransactions, nextCursor } = await getTransactions({
             page: direction,
-            cursor: cursor || undefined,
+            cursor: cursor,
             limitPerPage: ITEMS_PER_PAGE,
             filters: { date, type: typeFilter, account: accountFilter, category: categoryFilter }
         });
-        
-        setTransactions(fetchedTransactions);
-        
-        if (direction === 'next') {
-            setPageCursors(prev => ({ ...prev, [page]: nextCursor }));
-        }
-        
-        setHasMore(nextCursor !== null);
 
-      } catch(error: any) {
-          console.error("Failed to fetch transactions:", error);
-          toast({
-              variant: "destructive",
-              title: "Network Error",
-              description: "Could not fetch transactions.",
-          });
-      } finally {
-          setIsLoading(false);
-      }
-  }, [toast, date, typeFilter, accountFilter, categoryFilter, pageCursors, hasMore]);
+        setTransactions(fetchedTransactions);
+
+        if (nextCursor) {
+            setCursors(prev => [...prev, nextCursor]);
+        }
+        setHasMore(!!nextCursor);
+    } catch(error: any) {
+        console.error("Failed to fetch transactions:", error);
+        toast({
+            variant: "destructive",
+            title: "Network Error",
+            description: error.message || "Could not fetch transactions.",
+        });
+    } finally {
+        setIsLoading(false);
+    }
+}, [toast, date, typeFilter, accountFilter, categoryFilter, cursors, hasMore]);
   
-  // Initial data fetch
+  const handleNextPage = () => {
+    if (hasMore) {
+        setCurrentPage(prev => prev + 1);
+        fetchTransactions(currentPage + 1, 'next');
+    }
+  };
+
+  const handlePrevPage = () => {
+    // This is a simplified "previous" that just goes back to the first page.
+    // True "previous" pagination is more complex with Firestore cursors.
+    setCurrentPage(1);
+    setCursors([]);
+    fetchTransactions(1, 'first');
+  };
+  
+  // Initial data fetch and refetch on filter change
   useEffect(() => {
     if (user) {
-        fetchAuxiliaryData();
-        setCurrentPage(1);
-        setPageCursors({ 1: null });
-        fetchTransactions(1, 'first');
+      fetchAuxiliaryData();
     }
   }, [user, fetchAuxiliaryData]);
 
@@ -164,16 +174,11 @@ export default function TransactionsPage() {
   useEffect(() => {
     if (user) {
         setCurrentPage(1);
-        setPageCursors({ 1: null });
+        setCursors([]);
         fetchTransactions(1, 'first');
     }
   }, [date, typeFilter, accountFilter, categoryFilter, user]);
   
-  const handlePageChange = (newPage: number) => {
-    const direction = newPage > currentPage ? 'next' : 'prev';
-    fetchTransactions(newPage, direction);
-    setCurrentPage(newPage);
-  }
 
   const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
   
@@ -208,7 +213,9 @@ export default function TransactionsPage() {
     if (transactionToDelete) {
         try {
             await deleteTransaction(transactionToDelete.id, transactionToDelete.type, transactionToDelete.investmentId);
-            fetchTransactions(currentPage, 'first'); // Refetch current page
+            setCurrentPage(1); // Go back to first page after deletion
+            setCursors([]);
+            fetchTransactions(1, 'first');
         } catch (error: any) {
             console.error("Failed to delete transaction:", error);
             toast({
@@ -241,9 +248,9 @@ export default function TransactionsPage() {
             } as NewTransaction);
         }
 
+        setCurrentPage(1); // Go back to first page after save
+        setCursors([]);
         fetchTransactions(1, 'first');
-        setCurrentPage(1);
-        setPageCursors({ 1: null });
     } catch (error: any) {
         console.error("Failed to save transaction:", error);
         toast({
@@ -286,7 +293,7 @@ export default function TransactionsPage() {
                         </TableHeader>
                         <TableBody>
                             {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
-                                <TableRow key={i}>
+                                <TableRow key={`skel-${i}`}>
                                     {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
                                 </TableRow>
                             ))}
@@ -410,6 +417,13 @@ export default function TransactionsPage() {
                       {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
                   </TableRow>
               ))}
+              {!isLoading && transactions.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                        No transactions found for the selected filters.
+                    </TableCell>
+                </TableRow>
+              )}
               {!isLoading && transactions.map((transaction) => {
                 const fromAccount = accountMap.get(transaction.accountId);
                 const toAccount = transaction.toAccountId ? accountMap.get(transaction.toAccountId) : null;
@@ -517,7 +531,7 @@ export default function TransactionsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handlePageChange(currentPage - 1)}
+                  onClick={handlePrevPage}
                   disabled={currentPage === 1}
                 >
                   Previous
@@ -525,7 +539,7 @@ export default function TransactionsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handlePageChange(currentPage + 1)}
+                  onClick={handleNextPage}
                   disabled={!hasMore}
                 >
                   Next

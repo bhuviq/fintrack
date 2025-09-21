@@ -1,3 +1,4 @@
+
 import type { Category } from './types';
 
 // Using Omit because id and userId are not relevant for hardcoded defaults.
@@ -13,7 +14,11 @@ export const DEFAULT_EXPENSE_CATEGORIES: DefaultCategory[] = [
   { name: 'Healthcare', type: 'expense', isDefault: true },
   { name: 'Dining Out', type: 'expense', isDefault: true },
   { name: 'Shopping', type: 'expense', isDefault: true },
-  { name: 'Insurance', type: 'expense', isDefault: true },
+  { name: 'Car Insurance', type: 'expense', isDefault: true },
+  { name: 'Health Insurance', type: 'expense', isDefault: true },
+  { name: 'Life Insurance', type: 'expense', isDefault: true },
+  { name: 'Home Insurance', type: 'expense', isDefault: true },
+  { name: 'Bike Insurance', type: 'expense', isDefault: true },
 ];
 
 export const DEFAULT_INCOME_CATEGORIES: DefaultCategory[] = [

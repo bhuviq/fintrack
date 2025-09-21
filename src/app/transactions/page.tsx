@@ -54,7 +54,7 @@ import { type DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { getTransactions } from '@/services/transactionService';
+import { getTransactions, addTransaction, updateTransaction, deleteTransaction } from '@/services/transactionService';
 import { getAccounts } from '@/services/accountService';
 import { getCategories } from '@/services/categoryService';
 import { getInvestments } from '@/services/investmentService';
@@ -122,7 +122,11 @@ export default function TransactionsPage() {
     if (direction === 'next') {
         cursor = cursors[page - 1] || null;
     } else if (direction === 'prev' && page > 0) {
-        cursor = cursors[page - 1] || null;
+        // For simplicity and to avoid complex cursor management for 'prev',
+        // we reset to page 1 and fetch from the beginning.
+        // A more complex implementation could store prev cursors.
+        setCurrentPage(1);
+        cursor = null;
     }
 
     try {
@@ -138,6 +142,9 @@ export default function TransactionsPage() {
             const newCursors = [...cursors];
             newCursors[page] = nextCursor;
             setCursors(newCursors);
+        } else if (direction === 'first' || direction === 'prev') {
+             const newCursors = [null, nextCursor];
+             setCursors(newCursors);
         }
         
         setIsLastPage(fetchedTransactions.length < pageSize);
@@ -161,7 +168,7 @@ export default function TransactionsPage() {
     } finally {
         setIsLoading(false);
     }
-}, [user, date, pageSize, cursors, toast]);
+}, [user, date, pageSize, toast]);
   
   // Initial auxiliary data fetch
   useEffect(() => {
@@ -205,6 +212,8 @@ export default function TransactionsPage() {
     if (currentPage === 1) return;
     const prevPage = currentPage - 1;
     setCurrentPage(prevPage);
+    // Passing the target page to fetchTransactions.
+    // The function itself will handle the cursor logic.
     fetchTransactions(prevPage, 'prev');
   };
 

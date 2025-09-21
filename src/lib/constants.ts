@@ -13,6 +13,7 @@ export const DEFAULT_EXPENSE_CATEGORIES: DefaultCategory[] = [
   { name: 'Healthcare', type: 'expense', isDefault: true },
   { name: 'Dining Out', type: 'expense', isDefault: true },
   { name: 'Shopping', type: 'expense', isDefault: true },
+  { name: 'Insurance', type: 'expense', isDefault: true },
 ];
 
 export const DEFAULT_INCOME_CATEGORIES: DefaultCategory[] = [

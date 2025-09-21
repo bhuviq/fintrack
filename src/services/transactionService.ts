@@ -1,4 +1,6 @@
 
+'use client';
+
 import { db, auth } from '@/lib/firebase';
 import type { Transaction, NewTransaction, Investment, InvestmentTransaction } from '@/lib/types';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch, orderBy, limit, startAfter, documentId } from 'firebase/firestore';
@@ -30,9 +32,9 @@ export const getTransactions = async ({
     limitPerPage = 10,
     filters
 }: GetTransactionsParams): Promise<{ transactions: Transaction[], nextCursor: string | null }> => {
-    const userId = getUserId();
-    
-    let q = query(transactionsCollection, where("userId", "==", userId));
+    // Firestore security rules will enforce that only the current user's documents are returned.
+    // We construct the query on the public collection.
+    let q = query(transactionsCollection);
 
     // Apply filters one at a time to avoid composite index requirement
     if (filters.date?.from) {

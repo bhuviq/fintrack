@@ -1,7 +1,7 @@
 
 import { db, auth } from '@/lib/firebase';
 import type { Investment, NewInvestment, InvestmentTransaction } from '@/lib/types';
-import { collection, getDocs, getDoc, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, getDoc, addDoc, doc, updateDoc, deleteDoc, query, where,getCountFromServer, orderBy, limit, startAfter } from 'firebase/firestore';
 
 const investmentsCollection = collection(db, 'investments');
 
@@ -11,12 +11,58 @@ const getUserId = () => {
     return user.uid;
 };
 
+// This function fetches ALL investments and is used by the dashboard.
 export const getInvestments = async (): Promise<Investment[]> => {
     const userId = getUserId();
     const q = query(investmentsCollection, where("userId", "==", userId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Investment));
 };
+
+interface GetPaginatedInvestmentsParams {
+    page: number;
+    pageSize: number;
+    category?: string;
+}
+
+// This function fetches a paginated list of investments for the investments page.
+export const getPaginatedInvestments = async (params: GetPaginatedInvestmentsParams): Promise<{investments: Investment[], totalCount: number}> => {
+    const { page, pageSize, category } = params;
+    const userId = getUserId();
+    
+    // Base query for the user's investments
+    let q = query(investmentsCollection, where("userId", "==", userId));
+    
+    // Apply category filter if provided
+    if (category) {
+        q = query(q, where("category", "==", category));
+    }
+
+    // Get total count for pagination
+    const countSnapshot = await getCountFromServer(q);
+    const totalCount = countSnapshot.data().count;
+
+    // Apply ordering and pagination
+    let paginatedQuery = query(q, orderBy("name"));
+
+    if (page > 1) {
+        // To get the document to start after, we need to fetch the documents of the previous pages
+        const previousPagesQuery = query(paginatedQuery, limit((page - 1) * pageSize));
+        const previousPagesSnapshot = await getDocs(previousPagesQuery);
+        const lastVisible = previousPagesSnapshot.docs[previousPagesSnapshot.docs.length - 1];
+        if(lastVisible) {
+            paginatedQuery = query(paginatedQuery, startAfter(lastVisible));
+        }
+    }
+    
+    paginatedQuery = query(paginatedQuery, limit(pageSize));
+
+    const snapshot = await getDocs(paginatedQuery);
+    const investments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Investment));
+
+    return { investments, totalCount };
+}
+
 
 export const addInvestment = async (investmentData: NewInvestment): Promise<string> => {
     const userId = getUserId();

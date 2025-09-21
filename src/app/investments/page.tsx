@@ -37,18 +37,17 @@ import { InvestmentHistorySheet } from './investment-history-sheet';
 import { InvestmentTransactionForm, type InvestmentTransactionFormValues } from './investment-transaction-form';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
-import { getInvestments, addInvestment, updateInvestment, deleteInvestment, addInvestmentTransaction, updateInvestmentTransaction, deleteInvestmentTransaction } from '@/services/investmentService';
+import { getInvestments, getPaginatedInvestments, addInvestment, updateInvestment, deleteInvestment, addInvestmentTransaction, updateInvestmentTransaction, deleteInvestmentTransaction } from '@/services/investmentService';
 import { getCategories } from '@/services/categoryService';
 import type { Investment, InvestmentTransaction, Category, NewInvestment, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 
-const ITEMS_PER_PAGE = 10;
 type SortableKeys = keyof Investment | 'quantity' | 'netValue';
 
 export default function InvestmentsPage() {
-  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [serverFetchedInvestments, setServerFetchedInvestments] = useState<Investment[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
@@ -58,45 +57,70 @@ export default function InvestmentsPage() {
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [investmentToDelete, setInvestmentToDelete] = useState<Investment | null>(null);
-  const [activeTab, setActiveTab] = useState('All');
   const [historyInvestment, setHistoryInvestment] = useState<Investment | null>(null);
   const [isTransactionSheetOpen, setIsTransactionSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<{ transaction: InvestmentTransaction; index: number } | null>(null);
   const [deleteTransactionAlertOpen, setDeleteTransactionAlertOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
   
+  // Filters and pagination
+  const [activeTab, setActiveTab] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
+  const [totalInvestmentsCount, setTotalInvestmentsCount] = useState(0);
 
+  const fetchAuxiliaryData = useCallback(async () => {
+    try {
+        const fetchedCategories = await getCategories();
+        setCategories(fetchedCategories);
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not fetch categories.",
+        });
+    }
+  }, [toast]);
 
   const fetchData = useCallback(async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
-        const [fetchedInvestments, fetchedCategories] = await Promise.all([
-            getInvestments(),
-            getCategories(),
-        ]);
-        setInvestments(fetchedInvestments);
-        setCategories(fetchedCategories);
+        const { investments, totalCount } = await getPaginatedInvestments({
+            category: activeTab === 'All' ? undefined : activeTab,
+            page: currentPage,
+            pageSize,
+        });
+        setServerFetchedInvestments(investments);
+        setTotalInvestmentsCount(totalCount);
     } catch (error: any) {
         console.error("Failed to fetch investment data:", error);
         toast({
             variant: "destructive",
             title: "Network Error",
-            description: "Could not connect to the database. Please check your internet connection and Firebase configuration.",
+            description: "Could not connect to the database to fetch investments.",
         });
     } finally {
         setIsLoading(false);
     }
-  }, [toast]);
+  }, [user, toast, activeTab, currentPage, pageSize]);
 
   useEffect(() => {
-    if (user) {
-        fetchData();
+    if(user) {
+        fetchAuxiliaryData();
     }
-  }, [user, fetchData]);
+  }, [user, fetchAuxiliaryData]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, pageSize]);
 
 
   const investmentCategories = useMemo(
@@ -105,12 +129,12 @@ export default function InvestmentsPage() {
   );
 
   const portfolioCategories = useMemo(
-    () => ['All', ...Array.from(new Set(investments.map((i) => i.category)))],
-    [investments]
+    () => ['All', ...investmentCategories.map(c => c.name)],
+    [investmentCategories]
   );
   
   const investmentsWithCalculatedFields = useMemo(() => {
-    return investments.map(investment => {
+    return serverFetchedInvestments.map(investment => {
       const { category, history } = investment;
        if (!history || history.length === 0) {
         return { ...investment, quantity: 0, netValue: 0 };
@@ -122,25 +146,21 @@ export default function InvestmentsPage() {
       const netValue = quantity * investment.value;
       return { ...investment, quantity, netValue };
     });
-  }, [investments]);
+  }, [serverFetchedInvestments]);
   
-  const investmentsInTab = useMemo(() => {
-    return investments.filter(inv => activeTab === 'All' || inv.category === activeTab);
-  }, [investments, activeTab]);
-
+  
   const uniqueInvestmentTypes = useMemo(() => {
-    const types = new Set(investmentsInTab.map(inv => inv.type).filter(Boolean));
+    const types = new Set(serverFetchedInvestments.map(inv => inv.type).filter(Boolean));
     return ['all', ...Array.from(types)] as string[];
-  }, [investmentsInTab]);
+  }, [serverFetchedInvestments]);
 
   const showTypeFilter = useMemo(() => {
-    // Show filter if there is at least one item with a type in the current tab's investments
-    return investmentsInTab.some(inv => inv.type);
-  }, [investmentsInTab]);
+    return serverFetchedInvestments.some(inv => inv.type);
+  }, [serverFetchedInvestments]);
 
 
   const filteredAndSortedInvestments = useMemo(() => {
-    let items = investmentsWithCalculatedFields.filter(i => activeTab === 'All' || i.category === activeTab);
+    let items = investmentsWithCalculatedFields;
     
     if (searchQuery) {
         items = items.filter(i => 
@@ -179,22 +199,16 @@ export default function InvestmentsPage() {
       });
     }
     return items;
-  }, [investmentsWithCalculatedFields, activeTab, searchQuery, typeFilter, sortConfig]);
+  }, [investmentsWithCalculatedFields, searchQuery, typeFilter, sortConfig]);
   
-  const totalPages = Math.ceil(filteredAndSortedInvestments.length / ITEMS_PER_PAGE);
-  const paginatedInvestments = filteredAndSortedInvestments.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-  
-  const showSymbolColumn = useMemo(() => paginatedInvestments.some(i => i.symbol), [paginatedInvestments]);
-  const showTypeColumn = useMemo(() => paginatedInvestments.some(i => i.type), [paginatedInvestments]);
+  const totalPages = Math.ceil(totalInvestmentsCount / pageSize);
+  const showSymbolColumn = useMemo(() => filteredAndSortedInvestments.some(i => i.symbol), [filteredAndSortedInvestments]);
+  const showTypeColumn = useMemo(() => filteredAndSortedInvestments.some(i => i.type), [filteredAndSortedInvestments]);
 
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setTypeFilter('all');
-    setCurrentPage(1); 
   }
   
   const requestSort = (key: SortableKeys) => {
@@ -211,26 +225,6 @@ export default function InvestmentsPage() {
     }
     return sortConfig.direction === 'ascending' ? <ArrowUp className="h-4 w-4 ml-2" /> : <ArrowDown className="h-4 w-4 ml-2" />;
   };
-
-  const { portfolioValue, totalInvestment, totalChange } = useMemo(() => {
-    return filteredAndSortedInvestments.reduce(
-      (acc, investment) => {
-        const investmentNet = (investment.history || []).reduce((sum, tx) => {
-          const txValue = tx.quantity * tx.price;
-          return tx.type === 'buy' ? sum + txValue : sum - txValue;
-        }, 0);
-
-        acc.portfolioValue += investment.netValue;
-        acc.totalInvestment += investmentNet;
-        acc.totalChange += investment.changeAmount * investment.quantity;
-        return acc;
-      },
-      { portfolioValue: 0, totalInvestment: 0, totalChange: 0 }
-    );
-  }, [filteredAndSortedInvestments]);
-  
-  const totalProfit = portfolioValue - totalInvestment;
-  const totalProfitPercentage = totalInvestment !== 0 ? (totalProfit / totalInvestment) * 100 : 0;
   
   const formatNumber = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -284,7 +278,7 @@ export default function InvestmentsPage() {
     if (investmentToDelete) {
         try {
             await deleteInvestment(investmentToDelete.id);
-            await fetchData();
+            fetchData();
         } catch (error) {
             console.error("Failed to delete investment:", error);
         }
@@ -298,9 +292,9 @@ export default function InvestmentsPage() {
 
     try {
         await deleteInvestmentTransaction(historyInvestment.id, transactionToDelete);
-        const updatedData = await getInvestments();
-        setInvestments(updatedData);
+        const updatedData = await getInvestments(); // Fetch all to update history sheet correctly
         setHistoryInvestment(updatedData.find(inv => inv.id === historyInvestment.id) || null);
+        fetchData(); // Refetch paginated data for main table
     } catch (error) {
         console.error("Failed to delete transaction:", error);
     }
@@ -319,7 +313,7 @@ export default function InvestmentsPage() {
         } else {
             await addInvestment(investmentData as NewInvestment);
         }
-        await fetchData();
+        fetchData();
     } catch (error) {
         console.error("Failed to save investment:", error);
         toast({
@@ -352,9 +346,9 @@ export default function InvestmentsPage() {
             await addInvestmentTransaction(historyInvestment.id, newTransactionData);
         }
         
-        const updatedData = await getInvestments();
-        setInvestments(updatedData);
+        const updatedData = await getInvestments(); // Fetch all to update history sheet correctly
         setHistoryInvestment(updatedData.find(inv => inv.id === historyInvestment.id) || null);
+        fetchData(); // Refetch paginated data
     } catch (error: any) {
         console.error("Failed to save transaction:", error);
         toast({
@@ -412,7 +406,7 @@ export default function InvestmentsPage() {
     });
   };
 
-  if(isLoading) {
+  if(isLoading && serverFetchedInvestments.length === 0) {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -425,7 +419,6 @@ export default function InvestmentsPage() {
             <div className="flex flex-wrap items-center gap-2">
                 <Skeleton className="h-10 w-80" />
             </div>
-            <Card><CardHeader><Skeleton className="h-6 w-48" /></CardHeader><CardContent><Skeleton className="h-24 w-full" /></CardContent></Card>
             <Card><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent><Skeleton className="h-48 w-full" /></CardContent></Card>
         </div>
     )
@@ -476,43 +469,6 @@ export default function InvestmentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Portfolio Summary</CardTitle>
-          <CardDescription>
-            An overview of your investment performance for {activeTab === 'All' ? 'all categories' : activeTab}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Portfolio Value</p>
-              <p className="text-3xl font-bold">{formatNumber(portfolioValue)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Investment</p>
-              <p className="text-3xl font-bold">{formatNumber(totalInvestment)}</p>
-            </div>
-            <div>
-                <p className="text-sm text-muted-foreground">Total Profit / Loss</p>
-                <div className={`flex items-center text-3xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {totalProfit >= 0 ? <ArrowUp className="h-7 w-7" /> : <ArrowDown className="h-7 w-7" />}
-                    {formatNumber(Math.abs(totalProfit))}
-                </div>
-                 <p className={`text-sm font-medium ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {totalProfit >= 0 ? '+' : ''}{totalProfitPercentage.toFixed(2)}%
-                </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Today's Change</p>
-              <div className={`flex items-center text-3xl font-bold ${totalChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {totalChange >= 0 ? <ArrowUp className="h-7 w-7" /> : <ArrowDown className="h-7 w-7" />}
-                {formatNumber(Math.abs(totalChange))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
           <CardTitle>Holdings</CardTitle>
         </CardHeader>
         <CardContent>
@@ -543,7 +499,7 @@ export default function InvestmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedInvestments.map((investment) => (
+              {filteredAndSortedInvestments.map((investment) => (
                 <TableRow key={investment.id}>
                   <TableCell className="font-medium">{investment.name}</TableCell>
                   {activeTab === 'All' && <TableCell><Badge variant="outline">{investment.category}</Badge></TableCell>}
@@ -590,7 +546,7 @@ export default function InvestmentsPage() {
         {totalPages > 1 && (
             <CardFooter className="flex items-center justify-between p-4 border-t">
               <span className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
+                Page {currentPage} of {totalPages} ({totalInvestmentsCount} items)
               </span>
               <div className="flex items-center gap-2">
                 <Button

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -586,8 +586,9 @@ export default function InvestmentsPage() {
               ))}
             </TableBody>
           </Table>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t">
+        </CardContent>
+        {totalPages > 1 && (
+            <CardFooter className="flex items-center justify-between p-4 border-t">
               <span className="text-sm text-muted-foreground">
                 Page {currentPage} of {totalPages}
               </span>
@@ -609,9 +610,8 @@ export default function InvestmentsPage() {
                   Next
                 </Button>
               </div>
-            </div>
+            </CardFooter>
           )}
-        </CardContent>
       </Card>
       <InvestmentForm
         isOpen={isSheetOpen}
@@ -668,5 +668,3 @@ export default function InvestmentsPage() {
     </div>
   );
 }
-
-    

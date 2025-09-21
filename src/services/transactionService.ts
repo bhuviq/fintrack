@@ -3,7 +3,7 @@
 
 import { db, auth } from '@/lib/firebase';
 import type { Transaction, NewTransaction, Investment, InvestmentTransaction } from '@/lib/types';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch, orderBy, limit, startAfter, endBefore, limitToLast, DocumentSnapshot, documentId } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch, orderBy, limit, DocumentSnapshot } from 'firebase/firestore';
 
 const transactionsCollection = collection(db, 'transactions');
 const investmentsCollection = collection(db, 'investments');
@@ -16,17 +16,13 @@ const getUserId = () => {
 
 interface GetTransactionsParams {
     limit?: number;
-    filters: {
+    filters?: {
         date?: { from?: Date, to?: Date };
-    },
-    cursor?: DocumentSnapshot | null;
+    };
 }
 
-export const getTransactions = async ({
-    limit: pageSize,
-    filters,
-    cursor,
-}: GetTransactionsParams): Promise<{transactions: Transaction[], nextCursor: DocumentSnapshot | null}> => {
+export const getTransactions = async (params: GetTransactionsParams = {}): Promise<{transactions: Transaction[], nextCursor: DocumentSnapshot | null}> => {
+    const { limit: pageSize, filters } = params;
     const userId = getUserId();
     let q = query(transactionsCollection);
     
@@ -34,15 +30,11 @@ export const getTransactions = async ({
     q = query(q, where("userId", "==", userId), orderBy("date", "desc"));
     
     // Apply date range filter if provided
-    if (filters.date?.from) {
+    if (filters?.date?.from) {
         q = query(q, where("date", ">=", filters.date.from.toISOString().split('T')[0]));
     }
-    if (filters.date?.to) {
+    if (filters?.date?.to) {
         q = query(q, where("date", "<=", filters.date.to.toISOString().split('T')[0]));
-    }
-    
-    if (cursor) {
-        q = query(q, startAfter(cursor));
     }
     
     if (pageSize) {

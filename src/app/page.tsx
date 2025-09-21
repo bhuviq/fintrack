@@ -47,7 +47,7 @@ import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-provider';
 import Adsense from '@/components/adsense';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
 export default function DashboardPage() {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
@@ -58,7 +58,6 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
-  const accountMap = React.useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
   const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
   const dashboardAdSlotId = process.env.NEXT_PUBLIC_ADSENSE_DASHBOARD_SLOT_ID;
 
@@ -66,14 +65,17 @@ export default function DashboardPage() {
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch ALL data needed for accurate calculations
+      // Fetch only transactions from the last month for dashboard calculations
+      const fromDate = subMonths(new Date(), 1);
+      const toDate = new Date();
+
       const [
         { transactions: fetchedTransactions },
         fetchedGoals,
         fetchedInvestments,
         fetchedAccounts,
       ] = await Promise.all([
-        getTransactions({ filters: {} }), // Fetch all transactions
+        getTransactions({ filters: { date: { from: fromDate, to: toDate } } }), 
         getGoals(),
         getInvestments(),
         getAccounts(),
@@ -405,5 +407,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

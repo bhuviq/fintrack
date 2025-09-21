@@ -24,7 +24,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreHorizontal, PlusCircle, Edit, Trash2, History, Archive, Unarchive } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Edit, Trash2, History, Archive, ArchiveRestore } from 'lucide-react';
 import { AccountForm, type AccountFormValues } from './account-form';
 import { AccountHistorySheet } from './account-history-sheet';
 import { Progress } from '@/components/ui/progress';
@@ -233,7 +233,7 @@ export default function AccountsPage() {
         Edit
       </DropdownMenuItem>
        <DropdownMenuItem onClick={() => handleToggleArchive(account)}>
-        {account.status === 'active' ? <Archive className="mr-2 h-4 w-4" /> : <Unarchive className="mr-2 h-4 w-4" />}
+        {account.status === 'active' ? <Archive className="mr-2 h-4 w-4" /> : <ArchiveRestore className="mr-2 h-4 w-4" />}
         {account.status === 'active' ? 'Archive' : 'Unarchive'}
       </DropdownMenuItem>
       <DropdownMenuSeparator />

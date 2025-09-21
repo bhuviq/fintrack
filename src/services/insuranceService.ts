@@ -3,7 +3,7 @@ import { db, auth } from '@/lib/firebase';
 import type { Insurance, NewInsurance } from '@/lib/types';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 
-const insuranceCollection = collection(db, 'insurances');
+const insuranceCollection = collection(db, 'insurance');
 
 const getUserId = () => {
     const user = auth.currentUser;
@@ -25,10 +25,10 @@ export const addInsurance = async (insuranceData: NewInsurance): Promise<string>
 }
 
 export const updateInsurance = async (id: string, insuranceData: Partial<NewInsurance>): Promise<void> => {
-    const insuranceDoc = doc(db, "insurances", id);
+    const insuranceDoc = doc(db, "insurance", id);
     await updateDoc(insuranceDoc, insuranceData);
 }
 
 export const deleteInsurance = async (id: string): Promise<void> => {
-    await deleteDoc(doc(db, "insurances", id));
+    await deleteDoc(doc(db, "insurance", id));
 }

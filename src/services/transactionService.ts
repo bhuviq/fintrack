@@ -3,7 +3,7 @@
 
 import { db, auth } from '@/lib/firebase';
 import type { Transaction, NewTransaction, Investment, InvestmentTransaction } from '@/lib/types';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch, orderBy, limit, startAfter, endBefore, limitToLast } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch, orderBy, limit, startAfter, endBefore, limitToLast, DocumentSnapshot, documentId } from 'firebase/firestore';
 
 const transactionsCollection = collection(db, 'transactions');
 const investmentsCollection = collection(db, 'investments');
@@ -15,24 +15,24 @@ const getUserId = () => {
 };
 
 interface GetTransactionsParams {
-    limitPerPage?: number;
+    limit: number;
     filters: {
         date?: { from?: Date, to?: Date };
-    }
+    },
+    cursor?: DocumentSnapshot | null;
 }
 
-// This function now primarily filters by date range on the backend.
-// More complex filtering (type, account, category) will be done on the client.
 export const getTransactions = async ({
-    limitPerPage = 1000, // Fetch a larger batch for client-side filtering
-    filters
-}: GetTransactionsParams): Promise<Transaction[]> => {
+    limit: pageSize,
+    filters,
+    cursor,
+}: GetTransactionsParams): Promise<{transactions: Transaction[], nextCursor: DocumentSnapshot | null}> => {
     const userId = getUserId();
     let q = query(transactionsCollection);
-
-    // Filter by user ID and order by date. This requires a composite index.
+    
+    // Base query with user and ordering. This requires a composite index on (userId, date desc).
     q = query(q, where("userId", "==", userId), orderBy("date", "desc"));
-
+    
     // Apply date range filter if provided
     if (filters.date?.from) {
         q = query(q, where("date", ">=", filters.date.from.toISOString().split('T')[0]));
@@ -41,12 +41,17 @@ export const getTransactions = async ({
         q = query(q, where("date", "<=", filters.date.to.toISOString().split('T')[0]));
     }
     
-    q = query(q, limit(limitPerPage));
+    if (cursor) {
+        q = query(q, startAfter(cursor));
+    }
+    
+    q = query(q, limit(pageSize));
 
     const snapshot = await getDocs(q);
     const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+    const nextCursor = snapshot.docs[snapshot.docs.length - 1] || null;
     
-    return transactions;
+    return { transactions, nextCursor };
 };
 
 

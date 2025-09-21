@@ -469,6 +469,20 @@ export default function InvestmentsPage() {
             </SelectContent>
           </Select>
         )}
+        <Select 
+          value={String(pageSize)}
+          onValueChange={(value) => setPageSize(Number(value))}
+        >
+            <SelectTrigger className="w-auto sm:w-[120px]">
+                <SelectValue placeholder="Page size" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="10">10 per page</SelectItem>
+                <SelectItem value="25">25 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+                <SelectItem value="100">100 per page</SelectItem>
+            </SelectContent>
+        </Select>
       </div>
 
       <Card>

@@ -34,24 +34,28 @@ export default function InsurancePage() {
   const [insuranceToDelete, setInsuranceToDelete] = React.useState<Insurance | null>(null);
 
   const fetchData = React.useCallback(async () => {
-    setIsLoading(true);
+    // Don't set loading to true here, to avoid flashing on re-fetches
     try {
         const fetchedInsurances = await getInsurances();
         setInsurances(fetchedInsurances);
     } catch (error: any) {
         console.error("Failed to fetch insurances:", error);
-        toast({
-            variant: "destructive",
-            title: "Network Error",
-            description: "Could not connect to the database. Please check your internet connection and Firebase configuration.",
-        });
+        // Only show toast if it's not the initial load empty error
+        if (insurances.length > 0) {
+            toast({
+                variant: "destructive",
+                title: "Network Error",
+                description: "Could not fetch updated insurance data.",
+            });
+        }
     } finally {
         setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, insurances.length]);
 
   React.useEffect(() => {
     if (user) {
+        setIsLoading(true);
         fetchData();
     }
   }, [user, fetchData]);

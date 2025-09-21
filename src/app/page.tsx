@@ -66,12 +66,12 @@ export default function DashboardPage() {
     setIsLoading(true);
     try {
       const [
-        fetchedTransactions,
+        { transactions: fetchedTransactions },
         fetchedGoals,
         fetchedInvestments,
         fetchedAccounts,
       ] = await Promise.all([
-        getTransactions(),
+        getTransactions({ limit: 100, filters: {} }), // Fetch a reasonable number for dashboard widgets
         getGoals(),
         getInvestments(),
         getAccounts(),

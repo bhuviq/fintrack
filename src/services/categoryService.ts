@@ -49,10 +49,6 @@ const seedDefaultCategories = async () => {
 export const getCategories = async (): Promise<Category[]> => {
     const userId = getUserId();
 
-    // This will attempt to seed/update the default categories.
-    // We will await it to ensure defaults are available if they can be written.
-    await seedDefaultCategories();
-
     // Fetch default categories from Firestore
     const defaultSnapshot = await getDocs(defaultCategoriesCollection);
     const defaultCategories: Category[] = defaultSnapshot.docs.map(doc => ({

@@ -54,7 +54,7 @@ import { type DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { getTransactions } from '@/services/transactionService';
+import { getTransactions, addTransaction, updateTransaction, deleteTransaction } from '@/services/transactionService';
 import { getAccounts } from '@/services/accountService';
 import { getCategories } from '@/services/categoryService';
 import { getInvestments } from '@/services/investmentService';
@@ -122,10 +122,8 @@ export default function TransactionsPage() {
     setIsLoading(true);
     
     try {
-        // For simplicity with client-side filtering, we fetch a large batch.
-        // A more advanced implementation might handle "load more" from the server.
         const { transactions } = await getTransactions({
-            limit: SERVER_FETCH_PAGE_SIZE, // Fetch a large batch
+            limit: SERVER_FETCH_PAGE_SIZE,
             filters: { date },
         });
 
@@ -629,7 +627,5 @@ export default function TransactionsPage() {
     </>
   );
 }
-
-    
 
     

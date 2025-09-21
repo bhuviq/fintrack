@@ -158,7 +158,7 @@ export function TransactionForm({
   const investmentSourceAccounts = accounts.filter(acc => acc.type === 'broker' || acc.type === 'bank');
 
   const availableCategories = React.useMemo(
-    () => categories.filter((c) => c.type === transactionType && c.type !== 'investment'),
+    () => categories.filter((c) => c.type === transactionType && (c.type === 'income' || c.type === 'expense')),
     [transactionType, categories]
   );
   
@@ -581,3 +581,5 @@ export function TransactionForm({
     </Sheet>
   );
 }
+
+    

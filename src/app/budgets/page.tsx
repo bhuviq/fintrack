@@ -32,7 +32,8 @@ import { BudgetForm, type BudgetFormValues } from './budget-form';
 import { getBudgets, addBudget, updateBudget, deleteBudget } from '@/services/budgetService';
 import { getTransactions } from '@/services/transactionService';
 import { getCategories } from '@/services/categoryService';
-import type { Budget, Transaction, Category, NewBudget, Currency } from '@/lib/types';
+import { getInvestments } from '@/services/investmentService';
+import type { Budget, Transaction, Category, NewBudget, Currency, Investment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -43,6 +44,7 @@ export default function BudgetsPage() {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [budgets, setBudgets] = React.useState<Budget[]>([]);
   const [categories, setCategories] = React.useState<Category[]>([]);
+  const [investments, setInvestments] = React.useState<Investment[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -61,14 +63,16 @@ export default function BudgetsPage() {
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     try {
-        const [fetchedBudgets, fetchedTransactions, fetchedCategories] = await Promise.all([
+        const [fetchedBudgets, fetchedTransactions, fetchedCategories, fetchedInvestments] = await Promise.all([
             getBudgets(),
             getTransactions(),
             getCategories(),
+            getInvestments(),
         ]);
         setBudgets(fetchedBudgets);
         setTransactions(fetchedTransactions);
         setCategories(fetchedCategories);
+        setInvestments(fetchedInvestments);
     } catch (error: any) {
         console.error("Failed to fetch data:", error);
         toast({
@@ -167,36 +171,51 @@ export default function BudgetsPage() {
 
   const calculatedBudgets = React.useMemo(() => {
     if (!date?.from) return [];
-
+  
     const fromDate = date.from;
     const toDate = date.to || fromDate;
-    
+  
     // Normalize to start and end of day to include full days
     const start = new Date(fromDate.setHours(0, 0, 0, 0));
     const end = new Date(toDate.setHours(23, 59, 59, 999));
-    
+  
     const durationInDays = differenceInDays(end, start) + 1;
     const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
-
+    
+    const investmentMap = new Map(investments.map(inv => [inv.id, inv]));
+    const categoryTypeMap = new Map(categories.map(cat => [cat.name, cat.type]));
+  
     return budgets.map(budget => {
       const proratedTotal = (budget.total / daysInMonth) * durationInDays;
-
-      const spent = transactions
-        .filter(t => 
-            t.category === budget.category && 
-            t.type === 'expense' &&
-            new Date(t.date) >= start &&
-            new Date(t.date) <= end
-        )
-        .reduce((acc, t) => acc + t.amount, 0);
-
+      const budgetCategoryType = categoryTypeMap.get(budget.category);
+  
+      const spent = transactions.reduce((acc, t) => {
+        const transactionDate = new Date(t.date);
+        if (transactionDate < start || transactionDate > end) {
+          return acc;
+        }
+  
+        if (budgetCategoryType === 'expense' && t.type === 'expense' && t.category === budget.category) {
+          return acc + t.amount;
+        }
+  
+        if (budgetCategoryType === 'investment' && t.type === 'investment' && t.investmentId) {
+          const investment = investmentMap.get(t.investmentId);
+          if (investment && investment.category === budget.category) {
+            return acc + t.amount;
+          }
+        }
+  
+        return acc;
+      }, 0);
+  
       return {
         ...budget,
         spent,
         total: proratedTotal,
       };
     });
-  }, [date, budgets, transactions]);
+  }, [date, budgets, transactions, investments, categories]);
 
   const totalPages = Math.ceil(calculatedBudgets.length / ITEMS_PER_PAGE);
   const paginatedBudgets = calculatedBudgets.slice(

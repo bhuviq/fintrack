@@ -71,7 +71,7 @@ export function BudgetForm({
   });
 
   const availableCategories = React.useMemo(() => {
-    return allCategories.filter(c => c.type === 'expense' && (!existingCategories.includes(c.name) || budget?.category === c.name));
+    return allCategories.filter(c => (c.type === 'expense' || c.type === 'investment') && (!existingCategories.includes(c.name) || budget?.category === c.name));
   }, [existingCategories, budget, allCategories]);
 
   React.useEffect(() => {

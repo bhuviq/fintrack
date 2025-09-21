@@ -68,7 +68,7 @@ import Adsense from '@/components/adsense';
 const ITEMS_PER_PAGE = 10;
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
@@ -84,15 +84,11 @@ export default function TransactionsPage() {
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   
-  // --- Server-side Pagination & Filtering State ---
   const [date, setDate] = useState<DateRange | undefined>();
   const [typeFilter, setTypeFilter] = useState('all');
   const [accountFilter, setAccountFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  
   const [currentPage, setCurrentPage] = useState(1);
-  const [cursors, setCursors] = useState<string[]>([]);
-  const [hasMore, setHasMore] = useState(false);
   
   const fetchAuxiliaryData = useCallback(async () => {
     try {
@@ -114,28 +110,13 @@ export default function TransactionsPage() {
     }
   }, [toast]);
   
- const fetchTransactions = useCallback(async (page: number, direction: 'first' | 'next' | 'prev' = 'first') => {
-    if ((direction === 'next' && !hasMore && page > 1)) {
-        return;
-    }
-    
+ const fetchTransactions = useCallback(async () => {
     setIsLoading(true);
     try {
-        const cursor = direction === 'next' && cursors.length > 0 ? cursors[cursors.length - 1] : undefined;
-
-        const { transactions: fetchedTransactions, nextCursor } = await getTransactions({
-            page: direction,
-            cursor: cursor,
-            limitPerPage: ITEMS_PER_PAGE,
-            filters: { date, type: typeFilter, account: accountFilter, category: categoryFilter }
+        const fetchedTransactions = await getTransactions({
+            filters: { date }
         });
-
-        setTransactions(fetchedTransactions);
-
-        if (direction === 'next' && nextCursor) {
-            setCursors(prev => [...prev, nextCursor]);
-        }
-        setHasMore(!!nextCursor);
+        setAllTransactions(fetchedTransactions);
     } catch(error: any) {
         console.error("Failed to fetch transactions:", error);
         toast({
@@ -146,22 +127,7 @@ export default function TransactionsPage() {
     } finally {
         setIsLoading(false);
     }
-}, [toast, date, typeFilter, accountFilter, categoryFilter, hasMore]);
-  
-  const handleNextPage = () => {
-    if (hasMore) {
-        const newPage = currentPage + 1;
-        setCurrentPage(newPage);
-        fetchTransactions(newPage, 'next');
-    }
-  };
-
-  const handlePrevPage = () => {
-    // This is a simplified "previous" that just goes back to the first page.
-    setCurrentPage(1);
-    setCursors([]);
-    fetchTransactions(1, 'first');
-  };
+}, [toast, date]);
   
   // Initial auxiliary data fetch
   useEffect(() => {
@@ -170,14 +136,37 @@ export default function TransactionsPage() {
     }
   }, [user, fetchAuxiliaryData]);
 
-  // Refetch when filters change
+  // Refetch when date range changes
   useEffect(() => {
     if (user) {
-        setCurrentPage(1);
-        setCursors([]);
-        fetchTransactions(1, 'first');
+        fetchTransactions();
     }
-  }, [date, typeFilter, accountFilter, categoryFilter, user, fetchTransactions]);
+  }, [date, user, fetchTransactions]);
+
+  const filteredTransactions = useMemo(() => {
+    let transactions = allTransactions;
+    if (typeFilter !== 'all') {
+      transactions = transactions.filter(t => t.type === typeFilter);
+    }
+    if (accountFilter !== 'all') {
+      transactions = transactions.filter(t => t.accountId === accountFilter || t.toAccountId === accountFilter);
+    }
+    if (categoryFilter !== 'all') {
+      transactions = transactions.filter(t => t.category === categoryFilter);
+    }
+    return transactions;
+  }, [allTransactions, typeFilter, accountFilter, categoryFilter]);
+
+  const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+  const paginatedTransactions = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredTransactions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredTransactions, currentPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [typeFilter, accountFilter, categoryFilter]);
   
 
   const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
@@ -213,9 +202,7 @@ export default function TransactionsPage() {
     if (transactionToDelete) {
         try {
             await deleteTransaction(transactionToDelete.id, transactionToDelete.type, transactionToDelete.investmentId);
-            setCurrentPage(1); // Go back to first page after deletion
-            setCursors([]);
-            fetchTransactions(1, 'first');
+            fetchTransactions();
         } catch (error: any) {
             console.error("Failed to delete transaction:", error);
             toast({
@@ -248,9 +235,7 @@ export default function TransactionsPage() {
             } as NewTransaction);
         }
 
-        setCurrentPage(1); // Go back to first page after save
-        setCursors([]);
-        fetchTransactions(1, 'first');
+        fetchTransactions();
     } catch (error: any) {
         console.error("Failed to save transaction:", error);
         toast({
@@ -270,7 +255,7 @@ export default function TransactionsPage() {
     }).format(amount);
   };
   
-  if (isLoading && transactions.length === 0 && currentPage === 1) {
+  if (isLoading && allTransactions.length === 0 && currentPage === 1) {
     return (
         <div className="space-y-6">
              <div className="flex items-center justify-between mb-6">
@@ -304,10 +289,6 @@ export default function TransactionsPage() {
         </div>
     )
   }
-
-  const isTypeFiltered = typeFilter !== 'all';
-  const isAccountFiltered = accountFilter !== 'all';
-  const isCategoryFiltered = categoryFilter !== 'all';
 
   return (
     <>
@@ -349,7 +330,7 @@ export default function TransactionsPage() {
                     format(date.from, "LLL dd, y")
                     )
                 ) : (
-                    <span>Filter by date</span>
+                    <span>Filter by date (All)</span>
                 )}
                 </Button>
             </PopoverTrigger>
@@ -367,8 +348,7 @@ export default function TransactionsPage() {
 
         <Select 
           value={typeFilter} 
-          onValueChange={(value) => { setTypeFilter(value); setAccountFilter('all'); setCategoryFilter('all'); }}
-          disabled={isAccountFiltered || isCategoryFiltered}
+          onValueChange={setTypeFilter}
         >
             <SelectTrigger className="w-auto sm:w-[150px] text-sm h-9">
                 <SelectValue placeholder="Filter by type" />
@@ -384,8 +364,7 @@ export default function TransactionsPage() {
 
         <Select 
           value={accountFilter} 
-          onValueChange={(value) => { setAccountFilter(value); setTypeFilter('all'); setCategoryFilter('all'); }}
-          disabled={isTypeFiltered || isCategoryFiltered}
+          onValueChange={setAccountFilter}
         >
             <SelectTrigger className="w-auto sm:w-[180px] text-sm h-9">
                 <SelectValue placeholder="Filter by account" />
@@ -400,8 +379,7 @@ export default function TransactionsPage() {
 
         <Select 
           value={categoryFilter} 
-          onValueChange={(value) => { setCategoryFilter(value); setTypeFilter('all'); setAccountFilter('all'); }}
-          disabled={isTypeFiltered || isAccountFiltered}
+          onValueChange={setCategoryFilter}
         >
             <SelectTrigger className="w-auto sm:w-[180px] text-sm h-9">
                 <SelectValue placeholder="Filter by category" />
@@ -433,14 +411,14 @@ export default function TransactionsPage() {
                       {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
                   </TableRow>
               ))}
-              {!isLoading && transactions.length === 0 && (
+              {!isLoading && paginatedTransactions.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                         No transactions found for the selected filters.
                     </TableCell>
                 </TableRow>
               )}
-              {!isLoading && transactions.map((transaction) => {
+              {!isLoading && paginatedTransactions.map((transaction) => {
                 const fromAccount = accountMap.get(transaction.accountId);
                 const toAccount = transaction.toAccountId ? accountMap.get(transaction.toAccountId) : null;
                 const currency = fromAccount ? fromAccount.currency : globalCurrency;
@@ -539,15 +517,16 @@ export default function TransactionsPage() {
             </TableBody>
           </Table>
           
+          {totalPages > 1 && (
             <div className="flex items-center justify-between p-4 border-t">
               <span className="text-sm text-muted-foreground">
-                Page {currentPage}
+                Page {currentPage} of {totalPages}
               </span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handlePrevPage}
+                  onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
                   disabled={currentPage === 1}
                 >
                   Previous
@@ -555,13 +534,14 @@ export default function TransactionsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleNextPage}
-                  disabled={!hasMore}
+                  onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                  disabled={currentPage === totalPages}
                 >
                   Next
                 </Button>
               </div>
             </div>
+          )}
         </CardContent>
       </Card>
 

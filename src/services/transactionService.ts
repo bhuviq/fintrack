@@ -3,7 +3,7 @@
 
 import { db, auth } from '@/lib/firebase';
 import type { Transaction, NewTransaction, Investment, InvestmentTransaction } from '@/lib/types';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch, orderBy, limit, startAfter, documentId } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch, orderBy, limit, startAfter, endBefore, limitToLast } from 'firebase/firestore';
 
 const transactionsCollection = collection(db, 'transactions');
 const investmentsCollection = collection(db, 'investments');
@@ -15,55 +15,30 @@ const getUserId = () => {
 };
 
 interface GetTransactionsParams {
-    page: 'first' | 'next' | 'prev';
-    cursor?: string | null;
     limitPerPage?: number;
     filters: {
         date?: { from?: Date, to?: Date };
-        type?: string;
-        account?: string;
-        category?: string;
     }
 }
 
+// This function now primarily filters by date range on the backend.
+// More complex filtering (type, account, category) will be done on the client.
 export const getTransactions = async ({
-    page = 'first',
-    cursor = null,
-    limitPerPage = 10,
+    limitPerPage = 1000, // Fetch a larger batch for client-side filtering
     filters
-}: GetTransactionsParams): Promise<{ transactions: Transaction[], nextCursor: string | null }> => {
+}: GetTransactionsParams): Promise<Transaction[]> => {
     const userId = getUserId();
     let q = query(transactionsCollection);
 
-    // Always filter by the current user. This is crucial for security and for Firestore indexing.
-    q = query(q, where("userId", "==", userId));
+    // Filter by user ID and order by date. This requires a composite index.
+    q = query(q, where("userId", "==", userId), orderBy("date", "desc"));
 
-    // Apply other filters one at a time.
+    // Apply date range filter if provided
     if (filters.date?.from) {
         q = query(q, where("date", ">=", filters.date.from.toISOString().split('T')[0]));
     }
     if (filters.date?.to) {
         q = query(q, where("date", "<=", filters.date.to.toISOString().split('T')[0]));
-    }
-
-    if (filters.type && filters.type !== 'all') {
-        q = query(q, where("type", "==", filters.type));
-    } else if (filters.category && filters.category !== 'all') {
-        q = query(q, where("category", "==", filters.category));
-    } else if (filters.account && filters.account !== 'all') {
-        q = query(q, where("accountId", "==", filters.account));
-    }
-    
-    q = query(q, orderBy("date", "desc"));
-    
-    if (page === 'next' && cursor) {
-        const cursorDocRef = doc(db, "transactions", cursor);
-        const cursorDocSnap = await getDoc(cursorDocRef);
-        if (cursorDocSnap.exists()) {
-             q = query(q, startAfter(cursorDocSnap));
-        } else {
-            console.warn("Cursor document not found. Fetching from the beginning.");
-        }
     }
     
     q = query(q, limit(limitPerPage));
@@ -71,9 +46,7 @@ export const getTransactions = async ({
     const snapshot = await getDocs(q);
     const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
     
-    const nextCursor = snapshot.docs.length === limitPerPage ? snapshot.docs[snapshot.docs.length - 1].id : null;
-
-    return { transactions, nextCursor };
+    return transactions;
 };
 
 

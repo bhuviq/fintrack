@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -302,7 +301,7 @@ export function TransactionForm({
                     name="accountId"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>From Account</FormLabel>
+                        <FormLabel>Source Account</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
@@ -326,7 +325,7 @@ export function TransactionForm({
                     name="toAccountId"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>To Account</FormLabel>
+                        <FormLabel>Destination Account</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
@@ -581,5 +580,3 @@ export function TransactionForm({
     </Sheet>
   );
 }
-
-    

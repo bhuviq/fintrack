@@ -1,7 +1,7 @@
 
 import { db, auth } from '@/lib/firebase';
 import type { Transaction, NewTransaction, Investment, InvestmentTransaction } from '@/lib/types';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch, orderBy, limit, startAfter, endBefore, documentId, limitToLast } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch, orderBy, limit, startAfter, documentId } from 'firebase/firestore';
 
 const transactionsCollection = collection(db, 'transactions');
 const investmentsCollection = collection(db, 'investments');
@@ -48,31 +48,20 @@ export const getTransactions = async ({
         q = query(q, where("category", "==", filters.category));
     }
     if (filters.account && filters.account !== 'all') {
-        // This is a common use case, but Firestore doesn't support querying array fields this way.
-        // The logic is more complex; we'd need to query for accountId OR toAccountId.
-        // For simplicity now, we'll filter on the primary accountId.
-        // A more robust solution might involve duplicating data or a more complex query structure.
         q = query(q, where("accountId", "==", filters.account));
     }
     
     q = query(q, orderBy("date", "desc"), orderBy(documentId(), "desc"));
     
-    let cursorDocSnap;
-    if (cursor && page !== 'first') {
+    if (page === 'next' && cursor) {
         const cursorDocRef = doc(db, "transactions", cursor);
-        cursorDocSnap = await getDoc(cursorDocRef);
-        if (!cursorDocSnap.exists()) {
-             console.error("Cursor document not found, fetching from the start.");
-             // Reset to first page if cursor is invalid
-             page = 'first'; 
+        const cursorDocSnap = await getDoc(cursorDocRef);
+        if (cursorDocSnap.exists()) {
+             q = query(q, startAfter(cursorDocSnap));
+        } else {
+            console.warn("Cursor document not found. Fetching from the beginning.");
         }
     }
-    
-    if (page === 'next' && cursorDocSnap) {
-        q = query(q, startAfter(cursorDocSnap));
-    } 
-    // The 'prev' logic with endBefore and limitToLast is complex and can be error-prone with composite indexes.
-    // A simpler, more reliable approach for now is to just fetch from the start on filter changes and handle 'next' page.
     
     q = query(q, limit(limitPerPage));
 
@@ -81,7 +70,6 @@ export const getTransactions = async ({
     
     const nextCursor = snapshot.docs.length === limitPerPage ? snapshot.docs[snapshot.docs.length - 1].id : null;
 
-    // Return a simplified structure for now. Prev cursor logic is removed to fix the error.
     return { transactions, nextCursor };
 };
 

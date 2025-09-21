@@ -115,13 +115,13 @@ export default function TransactionsPage() {
   }, [toast]);
   
  const fetchTransactions = useCallback(async (page: number, direction: 'first' | 'next' | 'prev' = 'first') => {
-    if ((direction === 'prev' && page < 1) || (direction === 'next' && !hasMore && page > 1)) {
+    if ((direction === 'next' && !hasMore && page > 1)) {
         return;
     }
     
     setIsLoading(true);
     try {
-        const cursor = direction === 'next' ? cursors[cursors.length - 1] : undefined;
+        const cursor = direction === 'next' && cursors.length > 0 ? cursors[cursors.length - 1] : undefined;
 
         const { transactions: fetchedTransactions, nextCursor } = await getTransactions({
             page: direction,
@@ -132,7 +132,7 @@ export default function TransactionsPage() {
 
         setTransactions(fetchedTransactions);
 
-        if (nextCursor) {
+        if (direction === 'next' && nextCursor) {
             setCursors(prev => [...prev, nextCursor]);
         }
         setHasMore(!!nextCursor);
@@ -150,20 +150,20 @@ export default function TransactionsPage() {
   
   const handleNextPage = () => {
     if (hasMore) {
-        setCurrentPage(prev => prev + 1);
-        fetchTransactions(currentPage + 1, 'next');
+        const newPage = currentPage + 1;
+        setCurrentPage(newPage);
+        fetchTransactions(newPage, 'next');
     }
   };
 
   const handlePrevPage = () => {
     // This is a simplified "previous" that just goes back to the first page.
-    // True "previous" pagination is more complex with Firestore cursors.
     setCurrentPage(1);
     setCursors([]);
     fetchTransactions(1, 'first');
   };
   
-  // Initial data fetch and refetch on filter change
+  // Initial auxiliary data fetch
   useEffect(() => {
     if (user) {
       fetchAuxiliaryData();
@@ -177,7 +177,7 @@ export default function TransactionsPage() {
         setCursors([]);
         fetchTransactions(1, 'first');
     }
-  }, [date, typeFilter, accountFilter, categoryFilter, user]);
+  }, [date, typeFilter, accountFilter, categoryFilter, user, fetchTransactions]);
   
 
   const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
@@ -270,7 +270,7 @@ export default function TransactionsPage() {
     }).format(amount);
   };
   
-  if (isLoading && transactions.length === 0) {
+  if (isLoading && transactions.length === 0 && currentPage === 1) {
     return (
         <div className="space-y-6">
              <div className="flex items-center justify-between mb-6">

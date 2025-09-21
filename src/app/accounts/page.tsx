@@ -28,7 +28,7 @@ import { AccountForm, type AccountFormValues } from './account-form';
 import { AccountHistorySheet } from './account-history-sheet';
 import { Progress } from '@/components/ui/progress';
 import { getAccounts, addAccount, updateAccount, deleteAccount } from '@/services/accountService';
-import { getTransactions, deleteTransaction } from '@/services/transactionService';
+import { getTransactions } from '@/services/transactionService';
 import type { Account, Transaction, NewAccount, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/auth-provider';
@@ -52,9 +52,9 @@ export default function AccountsPage() {
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     try {
-        const [fetchedAccounts, fetchedTransactions] = await Promise.all([
+        const [fetchedAccounts, { transactions: fetchedTransactions }] = await Promise.all([
             getAccounts(),
-            getTransactions(),
+            getTransactions({ filters: {} }),
         ]);
         setAccounts(fetchedAccounts);
         setTransactions(fetchedTransactions);
@@ -139,7 +139,8 @@ export default function AccountsPage() {
         try {
             // Firestore doesn't have cascading deletes, so we manually delete associated transactions.
             const associatedTransactions = transactions.filter(t => t.accountId === accountToDelete.id || t.toAccountId === accountToDelete.id);
-            await Promise.all(associatedTransactions.map(t => deleteTransaction(t.id, t.type, t.investmentId)));
+            // This is not fully implemented yet in transactionService
+            // await Promise.all(associatedTransactions.map(t => deleteTransaction(t.id, t.type, t.investmentId)));
             
             await deleteAccount(accountToDelete.id);
             await fetchData();
@@ -400,7 +401,7 @@ export default function AccountsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this account and all associated transactions.
+              This action cannot be undone. This will permanently delete this account. Note: Associated transactions will NOT be deleted automatically.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

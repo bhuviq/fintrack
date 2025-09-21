@@ -47,6 +47,7 @@ import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-provider';
 import Adsense from '@/components/adsense';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 export default function DashboardPage() {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
@@ -65,13 +66,14 @@ export default function DashboardPage() {
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     try {
+      // Fetch ALL data needed for accurate calculations
       const [
         { transactions: fetchedTransactions },
         fetchedGoals,
         fetchedInvestments,
         fetchedAccounts,
       ] = await Promise.all([
-        getTransactions({ limit: 100, filters: {} }), // Fetch a reasonable number for dashboard widgets
+        getTransactions({ filters: {} }), // Fetch all transactions
         getGoals(),
         getInvestments(),
         getAccounts(),
@@ -154,14 +156,22 @@ export default function DashboardPage() {
 
   const spending = React.useMemo(() => {
     const spendingByCategory: { [key: string]: number } = {};
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    
     transactions
-      .filter((t) => t.type === 'expense')
+      .filter((t) => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'expense' && transactionDate >= monthStart && transactionDate <= monthEnd;
+      })
       .forEach((t) => {
         spendingByCategory[t.category] =
           (spendingByCategory[t.category] || 0) + t.amount;
       });
     return Object.entries(spendingByCategory)
       .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value) // Sort by value desc
       .slice(0, 6);
   }, [transactions]);
   

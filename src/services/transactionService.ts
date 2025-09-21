@@ -15,7 +15,7 @@ const getUserId = () => {
 };
 
 interface GetTransactionsParams {
-    limit: number;
+    limit?: number;
     filters: {
         date?: { from?: Date, to?: Date };
     },
@@ -45,11 +45,13 @@ export const getTransactions = async ({
         q = query(q, startAfter(cursor));
     }
     
-    q = query(q, limit(pageSize));
+    if (pageSize) {
+      q = query(q, limit(pageSize));
+    }
 
     const snapshot = await getDocs(q);
     const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
-    const nextCursor = snapshot.docs[snapshot.docs.length - 1] || null;
+    const nextCursor = pageSize ? snapshot.docs[snapshot.docs.length - 1] || null : null;
     
     return { transactions, nextCursor };
 };
@@ -86,7 +88,7 @@ export const addTransaction = async (transactionData: NewTransaction): Promise<s
         const batch = writeBatch(db);
 
         // 1. Add the main transaction record
-        const newTransactionDocRef = doc(transactionsCollection);
+        const newTransactionDocRef = doc(collection(db, 'transactions'));
         batch.set(newTransactionDocRef, { ...transactionData, userId, investmentTransactionId: newTransactionDocRef.id });
 
         // 2. Update the investment's history

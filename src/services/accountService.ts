@@ -14,12 +14,19 @@ export const getAccounts = async (): Promise<Account[]> => {
     const userId = getUserId();
     const q = query(accountsCollection, where("userId", "==", userId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+            id: doc.id, 
+            ...data,
+            status: data.status || 'active', // Default to active if status is not set
+        } as Account
+    });
 };
 
 export const addAccount = async (accountData: NewAccount): Promise<string> => {
     const userId = getUserId();
-    const docRef = await addDoc(accountsCollection, { ...accountData, userId });
+    const docRef = await addDoc(accountsCollection, { ...accountData, userId, status: 'active' });
     return docRef.id;
 }
 

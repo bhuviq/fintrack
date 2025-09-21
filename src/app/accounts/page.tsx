@@ -4,6 +4,7 @@
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +24,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreHorizontal, PlusCircle, Edit, Trash2, History } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Edit, Trash2, History, Archive, Unarchive } from 'lucide-react';
 import { AccountForm, type AccountFormValues } from './account-form';
 import { AccountHistorySheet } from './account-history-sheet';
 import { Progress } from '@/components/ui/progress';
@@ -109,10 +110,12 @@ export default function AccountsPage() {
     });
   }, [accounts, transactions]);
 
+  const activeAccounts = accountsWithCurrentBalance.filter(acc => acc.status === 'active');
+  const archivedAccounts = accountsWithCurrentBalance.filter(acc => acc.status === 'inactive');
 
-  const bankAccounts = accountsWithCurrentBalance.filter(acc => acc.type === 'bank');
-  const creditCardAccounts = accountsWithCurrentBalance.filter(acc => acc.type === 'credit-card');
-  const brokerAccounts = accountsWithCurrentBalance.filter(acc => acc.type === 'broker');
+  const bankAccounts = activeAccounts.filter(acc => acc.type === 'bank');
+  const creditCardAccounts = activeAccounts.filter(acc => acc.type === 'credit-card');
+  const brokerAccounts = activeAccounts.filter(acc => acc.type === 'broker');
 
   const handleAddAccount = () => {
     setEditingAccount(null);
@@ -133,6 +136,25 @@ export default function AccountsPage() {
     setAccountToDelete(account);
     setDeleteAlertOpen(true);
   };
+  
+  const handleToggleArchive = async (account: Account) => {
+    const newStatus = account.status === 'active' ? 'inactive' : 'active';
+    try {
+      await updateAccount(account.id, { status: newStatus });
+      toast({
+        title: "Success",
+        description: `Account has been ${newStatus === 'inactive' ? 'archived' : 'unarchived'}.`
+      });
+      fetchData(); // Refetch to update UI
+    } catch(e) {
+      console.error(e);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "There was a problem updating the account status."
+      });
+    }
+  }
 
   const confirmDelete = async () => {
     if (accountToDelete) {
@@ -200,6 +222,28 @@ export default function AccountsPage() {
     }
   }
 
+  const renderAccountActions = (account: Account) => (
+    <DropdownMenuContent>
+      <DropdownMenuItem onClick={() => handleViewHistory(account)}>
+        <History className="mr-2 h-4 w-4" />
+        View History
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => handleEditAccount(account)} disabled={account.status === 'inactive'}>
+        <Edit className="mr-2 h-4 w-4" />
+        Edit
+      </DropdownMenuItem>
+       <DropdownMenuItem onClick={() => handleToggleArchive(account)}>
+        {account.status === 'active' ? <Archive className="mr-2 h-4 w-4" /> : <Unarchive className="mr-2 h-4 w-4" />}
+        {account.status === 'active' ? 'Archive' : 'Unarchive'}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteAccount(account)}>
+        <Trash2 className="mr-2 h-4 w-4" />
+        Delete
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  );
+
   if (isLoading) {
     return (
         <div className="space-y-8">
@@ -251,132 +295,151 @@ export default function AccountsPage() {
         </Button>
       </div>
 
-      <div className="space-y-8">
-        <div>
-          <h2 className="text-xl font-bold mb-4">Credit Cards</h2>
-          {creditCardAccounts.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {creditCardAccounts.map((account) => {
-                 if (account.type !== 'credit-card') return null;
-                 const utilization = account.limit ? (Math.abs(account.currentBalance) / account.limit) * 100 : 0;
-                return (
-                  <Card key={account.id} className="flex flex-col">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <CardTitle className='pr-10'>{account.name}</CardTitle>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 -mt-2 -mr-2 flex-shrink-0">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => handleViewHistory(account)}>
-                                    <History className="mr-2 h-4 w-4" />
-                                    View History
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEditAccount(account)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteAccount(account)}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="flex-1 space-y-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Outstanding</p>
-                        <p className="text-2xl font-bold">{formatAmount(Math.abs(account.currentBalance), account.currency)}</p>
-                        <p className="text-sm text-muted-foreground">of {formatAmount(account.limit || 0, account.currency)} limit</p>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Utilization</span>
-                          <span className="font-medium">{utilization.toFixed(0)}%</span>
+      <Tabs defaultValue="active" className="space-y-4">
+        <TabsList>
+            <TabsTrigger value="active">Active</TabsTrigger>
+            <TabsTrigger value="archived">Archived ({archivedAccounts.length})</TabsTrigger>
+        </TabsList>
+        <TabsContent value="active" className="space-y-8">
+            <div>
+            <h2 className="text-xl font-bold mb-4">Credit Cards</h2>
+            {creditCardAccounts.length > 0 ? (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {creditCardAccounts.map((account) => {
+                    if (account.type !== 'credit-card') return null;
+                    const utilization = account.limit ? (Math.abs(account.currentBalance) / account.limit) * 100 : 0;
+                    return (
+                    <Card key={account.id} className="flex flex-col">
+                        <CardHeader>
+                        <div className="flex justify-between items-start">
+                            <CardTitle className='pr-10'>{account.name}</CardTitle>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 -mt-2 -mr-2 flex-shrink-0">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                {renderAccountActions(account)}
+                            </DropdownMenu>
                         </div>
-                        <Progress value={utilization} indicatorClassName={getProgressColor(utilization)} />
-                      </div>
-                    </CardContent>
-                    <CardDescription className="p-6 pt-0 text-xs">
-                        Next payment due on the {account.dueDate}{account.dueDate === 1 ? 'st' : account.dueDate === 2 ? 'nd' : account.dueDate === 3 ? 'rd' : 'th'} of each month.
-                    </CardDescription>
-                  </Card>
-                )
-              })}
+                        </CardHeader>
+                        <CardContent className="flex-1 space-y-4">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Outstanding</p>
+                            <p className="text-2xl font-bold">{formatAmount(Math.abs(account.currentBalance), account.currency)}</p>
+                            <p className="text-sm text-muted-foreground">of {formatAmount(account.limit || 0, account.currency)} limit</p>
+                        </div>
+                        <div>
+                            <div className="flex justify-between text-sm mb-1">
+                            <span>Utilization</span>
+                            <span className="font-medium">{utilization.toFixed(0)}%</span>
+                            </div>
+                            <Progress value={utilization} indicatorClassName={getProgressColor(utilization)} />
+                        </div>
+                        </CardContent>
+                        <CardDescription className="p-6 pt-0 text-xs">
+                            Next payment due on the {account.dueDate}{account.dueDate === 1 ? 'st' : account.dueDate === 2 ? 'nd' : account.dueDate === 3 ? 'rd' : 'th'} of each month.
+                        </CardDescription>
+                    </Card>
+                    )
+                })}
+                </div>
+            ) : (
+                <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-lg">
+                    <p className="text-muted-foreground">No active credit cards.</p>
+                </div>
+            )}
             </div>
-          ) : (
-             <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">No credit cards added yet.</p>
-                <p className="text-sm text-muted-foreground">Add a credit card to get started!</p>
-            </div>
-          )}
-        </div>
 
-        <div>
-           <h2 className="text-xl font-bold mb-4">Cash & Investment Accounts</h2>
-           {[...bankAccounts, ...brokerAccounts].length > 0 ? (
-            <Card>
-                <CardContent className="p-0">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead className="text-right">Balance</TableHead>
-                            <TableHead className="w-[50px]"></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {[...bankAccounts, ...brokerAccounts].sort((a,b) => a.name.localeCompare(b.name)).map((account) => (
-                            <TableRow key={account.id}>
-                                <TableCell className="font-medium">{account.name}</TableCell>
-                                <TableCell>
-                                    {getBadgeForType(account.type)}
-                                </TableCell>
-                                <TableCell className="text-right font-medium">{formatBalance(account.currentBalance, account.currency)}</TableCell>
-                                <TableCell>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            <DropdownMenuItem onClick={() => handleViewHistory(account)}>
-                                                <History className="mr-2 h-4 w-4" />
-                                                View History
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleEditAccount(account)}>
-                                                <Edit className="mr-2 h-4 w-4" />
-                                                Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteAccount(account)}>
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
+            <div>
+            <h2 className="text-xl font-bold mb-4">Cash & Investment Accounts</h2>
+            {[...bankAccounts, ...brokerAccounts].length > 0 ? (
+                <Card>
+                    <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead className="text-right">Balance</TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {[...bankAccounts, ...brokerAccounts].sort((a,b) => a.name.localeCompare(b.name)).map((account) => (
+                                <TableRow key={account.id}>
+                                    <TableCell className="font-medium">{account.name}</TableCell>
+                                    <TableCell>
+                                        {getBadgeForType(account.type)}
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">{formatBalance(account.currentBalance, account.currency)}</TableCell>
+                                    <TableCell>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            {renderAccountActions(account)}
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-lg">
+                    <p className="text-muted-foreground">No active bank or broker accounts.</p>
+                </div>
+            )}
+            </div>
+        </TabsContent>
+        <TabsContent value="archived">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Archived Accounts</CardTitle>
+                    <CardDescription>These accounts are inactive and hidden from other views.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                    {archivedAccounts.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead className="text-right">Last Balance</TableHead>
+                                    <TableHead className="w-[50px]"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {archivedAccounts.sort((a,b) => a.name.localeCompare(b.name)).map((account) => (
+                                    <TableRow key={account.id}>
+                                        <TableCell className="font-medium">{account.name}</TableCell>
+                                        <TableCell>{getBadgeForType(account.type)}</TableCell>
+                                        <TableCell className="text-right font-medium">{formatBalance(account.currentBalance, account.currency)}</TableCell>
+                                        <TableCell>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                </DropdownMenuTrigger>
+                                                {renderAccountActions(account)}
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                         <div className="text-center p-8 text-muted-foreground">
+                            You have no archived accounts.
+                        </div>
+                    )}
                 </CardContent>
             </Card>
-           ) : (
-            <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">No bank or broker accounts added yet.</p>
-                <p className="text-sm text-muted-foreground">Add an account to get started!</p>
-            </div>
-           )}
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
 
       <AccountForm
         isOpen={isSheetOpen}

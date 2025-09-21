@@ -12,6 +12,7 @@ export interface Account {
   currency: Currency;
   limit?: number;
   dueDate?: number;
+  status?: 'active' | 'inactive';
 }
 
 export type NewAccount = Omit<Account, 'id' | 'userId'>;

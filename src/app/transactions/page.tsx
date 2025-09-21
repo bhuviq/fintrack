@@ -422,20 +422,6 @@ export default function TransactionsPage() {
                 ))}
             </SelectContent>
         </Select>
-        <Select 
-          value={String(clientPageSize)}
-          onValueChange={(value) => setClientPageSize(Number(value))}
-        >
-            <SelectTrigger className="w-auto sm:w-[120px] text-sm h-9">
-                <SelectValue placeholder="Page size" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="10">10 per page</SelectItem>
-                <SelectItem value="25">25 per page</SelectItem>
-                <SelectItem value="50">50 per page</SelectItem>
-                <SelectItem value="100">100 per page</SelectItem>
-            </SelectContent>
-        </Select>
       </div>
 
       <Card>
@@ -566,9 +552,26 @@ export default function TransactionsPage() {
           
         {totalPages > 1 && (
             <CardFooter className="flex items-center justify-between p-4 border-t">
-                <span className="text-sm text-muted-foreground">
-                    Page {currentPage} of {totalPages} ({clientFilteredTransactions.length} items)
-                </span>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>Page {currentPage} of {totalPages} ({clientFilteredTransactions.length} items)</span>
+                <div className="flex items-center gap-2">
+                    <span>Rows per page:</span>
+                    <Select 
+                        value={String(clientPageSize)}
+                        onValueChange={(value) => setClientPageSize(Number(value))}
+                        >
+                        <SelectTrigger className="w-auto sm:w-[120px] h-8">
+                            <SelectValue placeholder="Page size" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+              </div>
                 <div className="flex items-center gap-2">
                 <Button
                     variant="outline"

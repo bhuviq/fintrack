@@ -141,7 +141,7 @@ export function AccountForm({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent>
+      <SheetContent className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle>
             {account ? 'Edit Account' : 'Add Account'}

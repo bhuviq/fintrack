@@ -146,7 +146,7 @@ export default function TransactionsPage() {
     } finally {
         setIsLoading(false);
     }
-}, [toast, date, typeFilter, accountFilter, categoryFilter, cursors, hasMore]);
+}, [toast, date, typeFilter, accountFilter, categoryFilter, hasMore]);
   
   const handleNextPage = () => {
     if (hasMore) {

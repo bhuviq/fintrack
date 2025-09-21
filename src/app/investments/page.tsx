@@ -436,37 +436,39 @@ export default function InvestmentsPage() {
           </Button>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-           <Select value={activeCategory} onValueChange={handleCategoryChange}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                    {portfolioCategories.map(category => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
-        <div className="flex items-center gap-2">
-            <Input 
-                placeholder="Search by name or symbol..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full"
-            />
-            {showTypeFilter && <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                    {uniqueInvestmentTypes.map(type => (
-                        <SelectItem key={type} value={type} className="capitalize">{type === 'all' ? 'All Types' : type}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>}
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={activeCategory} onValueChange={handleCategoryChange}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Filter by category" />
+          </SelectTrigger>
+          <SelectContent>
+            {portfolioCategories.map((category) => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder="Search by name or symbol..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full sm:w-auto sm:flex-1"
+        />
+        {showTypeFilter && (
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by type" />
+            </SelectTrigger>
+            <SelectContent>
+              {uniqueInvestmentTypes.map((type) => (
+                <SelectItem key={type} value={type} className="capitalize">
+                  {type === 'all' ? 'All Types' : type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Card>

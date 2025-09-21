@@ -453,7 +453,7 @@ export default function InvestmentsPage() {
           placeholder="Search by name or symbol..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto sm:flex-1"
+          className="w-full sm:w-64"
         />
         {showTypeFilter && (
           <Select value={typeFilter} onValueChange={setTypeFilter}>

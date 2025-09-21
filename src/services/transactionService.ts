@@ -50,7 +50,8 @@ export const getTransactions = async ({
         q = query(q, where("accountId", "==", filters.account));
     }
     
-    q = query(q, orderBy("date", "desc"), orderBy(documentId(), "desc"));
+    // Order by date to show most recent first. This is the main ordering.
+    q = query(q, orderBy("date", "desc"));
     
     if (page === 'next' && cursor) {
         const cursorDocRef = doc(db, "transactions", cursor);

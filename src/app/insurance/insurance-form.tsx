@@ -301,7 +301,7 @@ export function InsuranceForm({
                   name="endDate"
                   render={({ field }) => (
                   <FormItem className="flex flex-col">
-                      <FormLabel>Renewal / End Date</FormLabel>
+                      <FormLabel>Next Renewal / Premium Due Date</FormLabel>
                       <Popover>
                       <PopoverTrigger asChild>
                           <FormControl>

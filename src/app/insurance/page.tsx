@@ -135,6 +135,7 @@ export default function InsurancePage() {
   const getDaysUntilRenewal = (endDate: string) => {
     const renewalDate = new Date(endDate);
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize today's date to the start of the day
     const days = differenceInDays(renewalDate, today);
     return days;
   }
@@ -144,7 +145,7 @@ export default function InsurancePage() {
       return <Badge variant="destructive">Expired</Badge>;
     }
     if (days <= 30) {
-      return <Badge className="bg-yellow-500 text-white">Renews in {days} day{days !== 1 ? 's' : ''}</Badge>;
+      return <Badge className="bg-yellow-500 text-white">Due in {days} day{days !== 1 ? 's' : ''}</Badge>;
     }
     return <Badge variant="secondary">Active</Badge>;
   }
@@ -225,7 +226,7 @@ export default function InsurancePage() {
                   <CardFooter className="flex justify-between items-center text-sm">
                     {getRenewalBadge(daysToRenewal)}
                     <span className="text-muted-foreground">
-                        Renews on {format(new Date(policy.endDate), 'MMM d, yyyy')}
+                        Due on {format(new Date(policy.endDate), 'MMM d, yyyy')}
                     </span>
                   </CardFooter>
                 </Card>

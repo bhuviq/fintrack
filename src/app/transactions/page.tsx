@@ -65,7 +65,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-provider';
 import Adsense from '@/components/adsense';
 
-
 const ITEMS_PER_PAGE = 10;
 
 export default function TransactionsPage() {
@@ -80,90 +79,108 @@ export default function TransactionsPage() {
   const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
   const transactionsAdSlotId = process.env.NEXT_PUBLIC_ADSENSE_TRANSACTIONS_SLOT_ID;
 
-
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   
+  // --- Server-side Pagination & Filtering State ---
   const [date, setDate] = useState<DateRange | undefined>();
   const [typeFilter, setTypeFilter] = useState('all');
   const [accountFilter, setAccountFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  
   const [currentPage, setCurrentPage] = useState(1);
-
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const [pageCursors, setPageCursors] = useState<{ [page: number]: string | null }>({ 1: null });
+  const [hasMore, setHasMore] = useState(false);
+  
+  const fetchAuxiliaryData = useCallback(async () => {
     try {
-        const [fetchedTransactions, fetchedAccounts, fetchedCategories, fetchedInvestments] = await Promise.all([
-            getTransactions(),
+        const [fetchedAccounts, fetchedCategories, fetchedInvestments] = await Promise.all([
             getAccounts(),
             getCategories(),
             getInvestments(),
         ]);
-        setTransactions(fetchedTransactions);
         setAccounts(fetchedAccounts);
         setCategories(fetchedCategories);
         setInvestments(fetchedInvestments);
     } catch(error: any) {
-        console.error("Failed to fetch data:", error);
+        console.error("Failed to fetch auxiliary data:", error);
         toast({
             variant: "destructive",
             title: "Network Error",
-            description: "Could not connect to the database. Please check your internet connection and Firebase configuration.",
+            description: "Could not connect to the database to fetch accounts/categories.",
         });
-    } finally {
-        setIsLoading(false);
     }
   }, [toast]);
+  
+  const fetchTransactions = useCallback(async (page: number, direction: 'first' | 'next' | 'prev' = 'first') => {
+      if ((direction === 'prev' && page < 1) || (direction === 'next' && !hasMore && page > 1)) {
+        return;
+      }
+    
+      setIsLoading(true);
+      try {
+        const cursor = direction === 'next' ? pageCursors[page - 1] : pageCursors[page + 1];
+        
+        const { transactions: fetchedTransactions, nextCursor } = await getTransactions({
+            page: direction,
+            cursor: cursor || undefined,
+            limitPerPage: ITEMS_PER_PAGE,
+            filters: { date, type: typeFilter, account: accountFilter, category: categoryFilter }
+        });
+        
+        setTransactions(fetchedTransactions);
+        
+        if (direction === 'next') {
+            setPageCursors(prev => ({ ...prev, [page]: nextCursor }));
+        }
+        
+        setHasMore(nextCursor !== null);
 
+      } catch(error: any) {
+          console.error("Failed to fetch transactions:", error);
+          toast({
+              variant: "destructive",
+              title: "Network Error",
+              description: "Could not fetch transactions.",
+          });
+      } finally {
+          setIsLoading(false);
+      }
+  }, [toast, date, typeFilter, accountFilter, categoryFilter, pageCursors, hasMore]);
+  
+  // Initial data fetch
   useEffect(() => {
     if (user) {
-        fetchData();
+        fetchAuxiliaryData();
+        setCurrentPage(1);
+        setPageCursors({ 1: null });
+        fetchTransactions(1, 'first');
     }
-  }, [user, fetchData]);
+  }, [user, fetchAuxiliaryData]);
+
+  // Refetch when filters change
+  useEffect(() => {
+    if (user) {
+        setCurrentPage(1);
+        setPageCursors({ 1: null });
+        fetchTransactions(1, 'first');
+    }
+  }, [date, typeFilter, accountFilter, categoryFilter, user]);
   
+  const handlePageChange = (newPage: number) => {
+    const direction = newPage > currentPage ? 'next' : 'prev';
+    fetchTransactions(newPage, direction);
+    setCurrentPage(newPage);
+  }
+
   const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
   
   const uniqueCategories = useMemo(() => {
-    const categoryNames = new Set(transactions.map(t => t.category));
+    const categoryNames = new Set(categories.filter(c => c.type === 'expense' || c.type === 'income').map(c => c.name));
     return ['all', ...Array.from(categoryNames)].sort();
-  }, [transactions]);
-
-
-  const filteredTransactions = useMemo(() => {
-    let items = [...transactions];
-    
-    // Date filter
-    if (date?.from) {
-      const fromDate = new Date(date.from.setHours(0, 0, 0, 0));
-      const toDate = date.to ? new Date(date.to.setHours(23, 59, 59, 999)) : fromDate;
-      items = items.filter(t => {
-        const transactionDate = new Date(t.date);
-        return transactionDate >= fromDate && transactionDate <= toDate;
-      });
-    }
-    // Type filter
-    if (typeFilter !== 'all') {
-      items = items.filter(t => t.type === typeFilter);
-    }
-    // Account filter
-    if (accountFilter !== 'all') {
-      items = items.filter(t => t.accountId === accountFilter || t.toAccountId === accountFilter);
-    }
-    // Category filter
-    if (categoryFilter !== 'all') {
-      items = items.filter(t => t.category === categoryFilter);
-    }
-
-    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, date, typeFilter, accountFilter, categoryFilter]);
-
-  const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
-  const paginatedTransactions = filteredTransactions.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  }, [categories]);
 
   const handleAddTransaction = () => {
     setEditingTransaction(null);
@@ -171,8 +188,6 @@ export default function TransactionsPage() {
   };
 
   const handleEditTransaction = (transaction: Transaction) => {
-    // Investment transactions are simplified and cannot be edited from this main view.
-    // They should be managed from the investment's history for consistency.
     if (transaction.type === 'investment') {
         toast({
             title: "Edit from Investment History",
@@ -193,7 +208,7 @@ export default function TransactionsPage() {
     if (transactionToDelete) {
         try {
             await deleteTransaction(transactionToDelete.id, transactionToDelete.type, transactionToDelete.investmentId);
-            await fetchData();
+            fetchTransactions(currentPage, 'first'); // Refetch current page
         } catch (error: any) {
             console.error("Failed to delete transaction:", error);
             toast({
@@ -212,13 +227,13 @@ export default function TransactionsPage() {
     try {
         const { id, ...transactionData} = data;
         
-        if (id && editingTransaction) { // This is an update
+        if (id && editingTransaction) { 
             await updateTransaction(id, {
                 ...transactionData,
                 date: format(data.date, 'yyyy-MM-dd'),
                 amount: Number(data.amount),
             } as NewTransaction);
-        } else { // This is a new transaction
+        } else {
             await addTransaction({
                 ...transactionData,
                 date: format(data.date, 'yyyy-MM-dd'),
@@ -226,7 +241,9 @@ export default function TransactionsPage() {
             } as NewTransaction);
         }
 
-        await fetchData();
+        fetchTransactions(1, 'first');
+        setCurrentPage(1);
+        setPageCursors({ 1: null });
     } catch (error: any) {
         console.error("Failed to save transaction:", error);
         toast({
@@ -246,7 +263,7 @@ export default function TransactionsPage() {
     }).format(amount);
   };
   
-  if (isLoading) {
+  if (isLoading && transactions.length === 0) {
     return (
         <div className="space-y-6">
              <div className="flex items-center justify-between mb-6">
@@ -268,7 +285,7 @@ export default function TransactionsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {[...Array(5)].map((_, i) => (
+                            {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
                                 <TableRow key={i}>
                                     {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
                                 </TableRow>
@@ -388,7 +405,12 @@ export default function TransactionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedTransactions.map((transaction) => {
+              {isLoading && [...Array(ITEMS_PER_PAGE)].map((_, i) => (
+                  <TableRow key={`skel-${i}`}>
+                      {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
+                  </TableRow>
+              ))}
+              {!isLoading && transactions.map((transaction) => {
                 const fromAccount = accountMap.get(transaction.accountId);
                 const toAccount = transaction.toAccountId ? accountMap.get(transaction.toAccountId) : null;
                 const currency = fromAccount ? fromAccount.currency : globalCurrency;
@@ -410,7 +432,7 @@ export default function TransactionsPage() {
                         case 'transfer':
                             return (
                                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900">
-                                    <ArrowLeftRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    <ArrowLeftRight className="h-4 w-4 text-blue-600 dark:blue-red-400" />
                                 </div>
                             );
                         case 'investment':
@@ -426,7 +448,7 @@ export default function TransactionsPage() {
                      switch (transaction.type) {
                         case 'income': return 'text-green-600';
                         case 'expense': return 'text-red-600';
-                        case 'investment': return 'text-red-600'; // Investment is a form of expense
+                        case 'investment': return 'text-red-600';
                         default: return 'text-muted-foreground';
                      }
                 }
@@ -486,16 +508,16 @@ export default function TransactionsPage() {
             })}
             </TableBody>
           </Table>
-          {totalPages > 1 && (
+          
             <div className="flex items-center justify-between p-4 border-t">
               <span className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
+                Page {currentPage}
               </span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
                 >
                   Previous
@@ -503,14 +525,13 @@ export default function TransactionsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={!hasMore}
                 >
                   Next
                 </Button>
               </div>
             </div>
-          )}
         </CardContent>
       </Card>
 

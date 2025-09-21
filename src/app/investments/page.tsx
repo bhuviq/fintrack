@@ -35,7 +35,6 @@ import { ArrowUp, ArrowDown, ChevronsUpDown, MoreHorizontal, PlusCircle, Edit, T
 import { InvestmentForm, type InvestmentFormValues } from './investment-form';
 import { InvestmentHistorySheet } from './investment-history-sheet';
 import { InvestmentTransactionForm, type InvestmentTransactionFormValues } from './investment-transaction-form';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { getInvestments, getPaginatedInvestments, addInvestment, updateInvestment, deleteInvestment, addInvestmentTransaction, updateInvestmentTransaction, deleteInvestmentTransaction } from '@/services/investmentService';
 import { getCategories } from '@/services/categoryService';
@@ -64,7 +63,7 @@ export default function InvestmentsPage() {
   const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
   
   // Filters and pagination
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeCategory, setActiveCategory] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,7 +89,7 @@ export default function InvestmentsPage() {
     setIsLoading(true);
     try {
         const { investments, totalCount } = await getPaginatedInvestments({
-            category: activeTab === 'All' ? undefined : activeTab,
+            category: activeCategory === 'All' ? undefined : activeCategory,
             page: currentPage,
             pageSize,
         });
@@ -106,7 +105,7 @@ export default function InvestmentsPage() {
     } finally {
         setIsLoading(false);
     }
-  }, [user, toast, activeTab, currentPage, pageSize]);
+  }, [user, toast, activeCategory, currentPage, pageSize]);
 
   useEffect(() => {
     if(user) {
@@ -120,7 +119,7 @@ export default function InvestmentsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, pageSize]);
+  }, [activeCategory, pageSize]);
 
 
   const investmentCategories = useMemo(
@@ -206,8 +205,8 @@ export default function InvestmentsPage() {
   const showTypeColumn = useMemo(() => filteredAndSortedInvestments.some(i => i.type), [filteredAndSortedInvestments]);
 
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
+  const handleCategoryChange = (value: string) => {
+    setActiveCategory(value);
     setTypeFilter('all');
   }
   
@@ -438,16 +437,17 @@ export default function InvestmentsPage() {
       </div>
 
       <div className="space-y-4">
-        <div>
-            <Tabs defaultValue="All" onValueChange={handleTabChange} value={activeTab}>
-                <TabsList>
-                    {portfolioCategories.map((category) => (
-                    <TabsTrigger key={category} value={category}>
-                        {category}
-                    </TabsTrigger>
+        <div className="flex items-center gap-2">
+           <Select value={activeCategory} onValueChange={handleCategoryChange}>
+                <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by category" />
+                </SelectTrigger>
+                <SelectContent>
+                    {portfolioCategories.map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
                     ))}
-                </TabsList>
-            </Tabs>
+                </SelectContent>
+            </Select>
         </div>
         <div className="flex items-center gap-2">
             <Input 
@@ -480,7 +480,7 @@ export default function InvestmentsPage() {
                 <TableHead onClick={() => requestSort('name')} className="cursor-pointer">
                     <div className="flex items-center">Name {getSortIcon('name')}</div>
                 </TableHead>
-                {activeTab === 'All' && <TableHead onClick={() => requestSort('category')} className="cursor-pointer">
+                {activeCategory === 'All' && <TableHead onClick={() => requestSort('category')} className="cursor-pointer">
                     <div className="flex items-center">Category {getSortIcon('category')}</div>
                 </TableHead>}
                 {showSymbolColumn && <TableHead className="cursor-pointer" onClick={() => requestSort('symbol')}><div className="flex items-center">Symbol {getSortIcon('symbol')}</div></TableHead>}
@@ -504,7 +504,7 @@ export default function InvestmentsPage() {
               {filteredAndSortedInvestments.map((investment) => (
                 <TableRow key={investment.id}>
                   <TableCell className="font-medium">{investment.name}</TableCell>
-                  {activeTab === 'All' && <TableCell><Badge variant="outline">{investment.category}</Badge></TableCell>}
+                  {activeCategory === 'All' && <TableCell><Badge variant="outline">{investment.category}</Badge></TableCell>}
                   {showSymbolColumn && <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>}
                   {showTypeColumn && <TableCell className="text-muted-foreground">{investment.type || 'N/A'}</TableCell>}
                   <TableCell className="text-right font-medium">{formatQuantity(investment)}</TableCell>

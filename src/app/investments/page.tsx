@@ -437,17 +437,19 @@ export default function InvestmentsPage() {
           </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-        <Tabs defaultValue="All" onValueChange={handleTabChange} value={activeTab} className="lg:col-span-3">
-          <TabsList>
-            {portfolioCategories.map((category) => (
-              <TabsTrigger key={category} value={category}>
-                {category}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-        <div className="flex items-center gap-2 lg:col-span-3">
+      <div className="space-y-4">
+        <div>
+            <Tabs defaultValue="All" onValueChange={handleTabChange} value={activeTab}>
+                <TabsList>
+                    {portfolioCategories.map((category) => (
+                    <TabsTrigger key={category} value={category}>
+                        {category}
+                    </TabsTrigger>
+                    ))}
+                </TabsList>
+            </Tabs>
+        </div>
+        <div className="flex items-center gap-2">
             <Input 
                 placeholder="Search by name or symbol..."
                 value={searchQuery}

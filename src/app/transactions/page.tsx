@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -54,7 +54,7 @@ import { type DateRange } from 'react-day-picker';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { getTransactions, addTransaction, updateTransaction, deleteTransaction } from '@/services/transactionService';
+import { getTransactions } from '@/services/transactionService';
 import { getAccounts } from '@/services/accountService';
 import { getCategories } from '@/services/categoryService';
 import { getInvestments } from '@/services/investmentService';
@@ -64,10 +64,11 @@ import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-provider';
 import Adsense from '@/components/adsense';
-import { DocumentSnapshot } from 'firebase/firestore';
+
+const SERVER_FETCH_PAGE_SIZE = 100; // Fetch a larger chunk from the server
 
 export default function TransactionsPage() {
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [serverFetchedTransactions, setServerFetchedTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
@@ -83,16 +84,18 @@ export default function TransactionsPage() {
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   
+  // Server-side filters
   const [date, setDate] = useState<DateRange | undefined>();
+
+  // Client-side filters
   const [typeFilter, setTypeFilter] = useState('all');
   const [accountFilter, setAccountFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   
-  const [pageSize, setPageSize] = useState(10);
+  // Client-side pagination state
+  const [clientPageSize, setClientPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [cursors, setCursors] = useState<(DocumentSnapshot | null)[]>([null]);
-  const [isLastPage, setIsLastPage] = useState(false);
-
+  
 
   const fetchAuxiliaryData = useCallback(async () => {
     try {
@@ -114,40 +117,19 @@ export default function TransactionsPage() {
     }
   }, [toast]);
   
- const fetchTransactions = useCallback(async (page: number, direction: 'first' | 'next' | 'prev') => {
+  const fetchAllTransactionsForDateRange = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
     
-    let cursor = null;
-    if (direction === 'next') {
-        cursor = cursors[page - 1] || null;
-    } else if (direction === 'prev' && page > 0) {
-        // For simplicity and to avoid complex cursor management for 'prev',
-        // we reset to page 1 and fetch from the beginning.
-        // A more complex implementation could store prev cursors.
-        setCurrentPage(1);
-        cursor = null;
-    }
-
     try {
-        const { transactions: fetchedTransactions, nextCursor } = await getTransactions({
-            limit: pageSize,
+        // For simplicity with client-side filtering, we fetch a large batch.
+        // A more advanced implementation might handle "load more" from the server.
+        const { transactions } = await getTransactions({
+            limit: SERVER_FETCH_PAGE_SIZE, // Fetch a large batch
             filters: { date },
-            cursor: cursor,
         });
 
-        setAllTransactions(fetchedTransactions);
-
-        if (direction === 'next') {
-            const newCursors = [...cursors];
-            newCursors[page] = nextCursor;
-            setCursors(newCursors);
-        } else if (direction === 'first' || direction === 'prev') {
-             const newCursors = [null, nextCursor];
-             setCursors(newCursors);
-        }
-        
-        setIsLastPage(fetchedTransactions.length < pageSize);
+        setServerFetchedTransactions(transactions);
 
     } catch(error: any) {
         console.error("Failed to fetch transactions:", error);
@@ -168,7 +150,7 @@ export default function TransactionsPage() {
     } finally {
         setIsLoading(false);
     }
-}, [user, date, pageSize, toast]);
+  }, [user, date, toast]);
   
   // Initial auxiliary data fetch
   useEffect(() => {
@@ -177,18 +159,17 @@ export default function TransactionsPage() {
     }
   }, [user, fetchAuxiliaryData]);
 
-  // Refetch when filters or page size change
+  // Refetch when server-side filters change
   useEffect(() => {
     if (user) {
-        setCurrentPage(1);
-        setCursors([null]);
-        setIsLastPage(false);
-        fetchTransactions(1, 'first');
+      setCurrentPage(1); // Reset page on new data fetch
+      fetchAllTransactionsForDateRange();
     }
-  }, [date, user, fetchTransactions, pageSize]);
+  }, [date, user, fetchAllTransactionsForDateRange]);
 
-  const filteredTransactions = useMemo(() => {
-    let transactions = allTransactions;
+  // Apply client-side filters
+  const clientFilteredTransactions = useMemo(() => {
+    let transactions = serverFetchedTransactions;
     if (typeFilter !== 'all') {
       transactions = transactions.filter(t => t.type === typeFilter);
     }
@@ -199,23 +180,26 @@ export default function TransactionsPage() {
       transactions = transactions.filter(t => t.category === categoryFilter);
     }
     return transactions;
-  }, [allTransactions, typeFilter, accountFilter, categoryFilter]);
+  }, [serverFetchedTransactions, typeFilter, accountFilter, categoryFilter]);
+
+  // Reset page number when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [typeFilter, accountFilter, categoryFilter, clientPageSize]);
+
+  // Client-side pagination logic
+  const totalPages = Math.ceil(clientFilteredTransactions.length / clientPageSize);
+  const paginatedTransactions = useMemo(() => {
+      const startIndex = (currentPage - 1) * clientPageSize;
+      return clientFilteredTransactions.slice(startIndex, startIndex + clientPageSize);
+  }, [clientFilteredTransactions, currentPage, clientPageSize]);
   
-  const handleNextPage = () => {
-    if (isLastPage) return;
-    const nextPage = currentPage + 1;
-    setCurrentPage(nextPage);
-    fetchTransactions(nextPage, 'next');
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
-  const handlePrevPage = () => {
-    if (currentPage === 1) return;
-    const prevPage = currentPage - 1;
-    setCurrentPage(prevPage);
-    // Passing the target page to fetchTransactions.
-    // The function itself will handle the cursor logic.
-    fetchTransactions(prevPage, 'prev');
-  };
 
   const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), [accounts]);
   
@@ -250,7 +234,7 @@ export default function TransactionsPage() {
     if (transactionToDelete) {
         try {
             await deleteTransaction(transactionToDelete.id, transactionToDelete.type, transactionToDelete.investmentId);
-            fetchTransactions(currentPage, 'first'); // Refetch current page
+            fetchAllTransactionsForDateRange(); // Refetch current page
         } catch (error: any) {
             console.error("Failed to delete transaction:", error);
             toast({
@@ -283,9 +267,7 @@ export default function TransactionsPage() {
             } as NewTransaction);
         }
 
-        fetchTransactions(1, 'first'); // Go back to first page on save
-        setCurrentPage(1);
-        setCursors([null]);
+        fetchAllTransactionsForDateRange();
     } catch (error: any) {
         console.error("Failed to save transaction:", error);
         toast({
@@ -305,7 +287,7 @@ export default function TransactionsPage() {
     }).format(amount);
   };
   
-  if (isLoading && allTransactions.length === 0 && currentPage === 1) {
+  if (isLoading && serverFetchedTransactions.length === 0) {
     return (
         <div className="space-y-6">
              <div className="flex items-center justify-between mb-6">
@@ -327,7 +309,7 @@ export default function TransactionsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {[...Array(pageSize)].map((_, i) => (
+                            {[...Array(clientPageSize)].map((_, i) => (
                                 <TableRow key={`skel-${i}`}>
                                     {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
                                 </TableRow>
@@ -358,6 +340,7 @@ export default function TransactionsPage() {
       </div>
 
        <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* Server-side filters */}
         <Popover>
             <PopoverTrigger asChild>
                 <Button
@@ -396,6 +379,7 @@ export default function TransactionsPage() {
             </PopoverContent>
         </Popover>
 
+        {/* Client-side filters */}
         <Select 
           value={typeFilter} 
           onValueChange={setTypeFilter}
@@ -441,8 +425,8 @@ export default function TransactionsPage() {
             </SelectContent>
         </Select>
         <Select 
-          value={String(pageSize)}
-          onValueChange={(value) => setPageSize(Number(value))}
+          value={String(clientPageSize)}
+          onValueChange={(value) => setClientPageSize(Number(value))}
         >
             <SelectTrigger className="w-auto sm:w-[120px] text-sm h-9">
                 <SelectValue placeholder="Page size" />
@@ -470,19 +454,19 @@ export default function TransactionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && [...Array(pageSize)].map((_, i) => (
+              {isLoading && [...Array(clientPageSize)].map((_, i) => (
                   <TableRow key={`skel-${i}`}>
                       {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
                   </TableRow>
               ))}
-              {!isLoading && filteredTransactions.length === 0 && (
+              {!isLoading && paginatedTransactions.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                         No transactions found for the selected filters.
                     </TableCell>
                 </TableRow>
               )}
-              {!isLoading && filteredTransactions.map((transaction) => {
+              {!isLoading && paginatedTransactions.map((transaction) => {
                 const fromAccount = accountMap.get(transaction.accountId);
                 const toAccount = transaction.toAccountId ? accountMap.get(transaction.toAccountId) : null;
                 const currency = fromAccount ? fromAccount.currency : globalCurrency;
@@ -580,33 +564,33 @@ export default function TransactionsPage() {
             })}
             </TableBody>
           </Table>
-          
-          {(currentPage > 1 || !isLastPage) && (
-            <div className="flex items-center justify-between p-4 border-t">
-              <span className="text-sm text-muted-foreground">
-                Page {currentPage}
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrevPage}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleNextPage}
-                  disabled={isLastPage}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
+          
+        {totalPages > 1 && (
+            <CardFooter className="flex items-center justify-between p-4 border-t">
+                <span className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages} ({clientFilteredTransactions.length} items)
+                </span>
+                <div className="flex items-center gap-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                >
+                    Previous
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                >
+                    Next
+                </Button>
+                </div>
+            </CardFooter>
+        )}
       </Card>
 
       {adsenseClientId && transactionsAdSlotId && (
@@ -645,3 +629,5 @@ export default function TransactionsPage() {
     </>
   );
 }
+
+    

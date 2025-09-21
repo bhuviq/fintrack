@@ -10,6 +10,7 @@ const pageTitles: { [key: string]: string } = {
   '/transactions': 'Transactions',
   '/accounts': 'Accounts',
   '/investments': 'Investments',
+  '/insurance': 'Insurance',
   '/budgets': 'Budgets',
   '/goals': 'Goals',
   '/categories': 'Categories',

@@ -1,4 +1,5 @@
 
+
 export type Currency = 'USD' | 'GBP' | 'INR';
 
 export interface Account {
@@ -109,3 +110,19 @@ export interface UserProfile {
     twoFactorSecret?: string;
     currency?: Currency;
 }
+
+export interface Insurance {
+  id: string;
+  userId: string;
+  policyName: string;
+  insurer: string;
+  type: 'Car' | 'Health' | 'Life' | 'Bike' | 'Home' | 'Other';
+  policyNumber: string;
+  coverage: number;
+  premium: number;
+  premiumFrequency: 'monthly' | 'quarterly' | 'annually';
+  startDate: string; // ISO Date
+  endDate: string;   // ISO Date
+  currency: Currency;
+}
+export type NewInsurance = Omit<Insurance, 'id' | 'userId'>;

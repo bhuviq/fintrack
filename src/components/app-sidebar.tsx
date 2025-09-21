@@ -28,6 +28,7 @@ import {
   Wallet,
   Shapes,
   Landmark,
+  Shield,
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -39,6 +40,7 @@ const navItems = [
   { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/investments', label: 'Investments', icon: Briefcase },
+  { href: '/insurance', label: 'Insurance', icon: Shield },
   { href: '/budgets', label: 'Budgets', icon: PiggyBank },
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/categories', label: 'Categories', icon: Shapes },

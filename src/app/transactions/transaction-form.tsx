@@ -217,17 +217,29 @@ export function TransactionForm({
 
 
   const handleSubmit = (values: TransactionFormValues) => {
-    const submissionData = { ...values };
+    // Build the data object explicitly to avoid 'undefined' fields which Firestore rejects
+    const submissionData: any = {
+      description: values.description,
+      amount: values.amount,
+      type: values.type,
+      date: values.date,
+      accountId: values.accountId,
+    };
 
-    if (submissionData.type === 'transfer') {
+    if (values.type === 'transfer') {
       submissionData.category = 'Transfer';
-    } else if (submissionData.type === 'investment') {
-        submissionData.category = 'Investment';
+      submissionData.toAccountId = values.toAccountId;
+    } else if (values.type === 'investment') {
+      submissionData.category = 'Investment';
+      submissionData.investmentId = values.investmentId;
+      submissionData.investmentQuantity = values.investmentQuantity;
     } else {
-      delete submissionData.toAccountId;
-      delete submissionData.investmentId;
-      delete submissionData.investmentQuantity;
+      // income or expense
+      submissionData.category = values.category;
     }
+
+    // Clean up any remaining undefined values just in case
+    Object.keys(submissionData).forEach(key => submissionData[key] === undefined && delete submissionData[key]);
 
     onSubmit({ ...submissionData, id: transaction?.id } as TransactionFormValues);
     onOpenChange(false);

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -91,21 +90,21 @@ export default function AccountsPage() {
 
             // Credits to the account (money in)
             if (t.accountId === account.id && t.type === 'income') {
-                return total + t.amount;
+                return total + Number(t.amount);
             }
             if (t.toAccountId === account.id && t.type === 'transfer') {
-                 return total + t.amount;
+                 return total + Number(t.amount);
             }
 
             // Debits from the account (money out)
             if (t.accountId === account.id && (t.type === 'expense' || t.type === 'transfer' || t.type === 'investment')) {
-                return total - t.amount;
+                return total - Number(t.amount);
             }
             
             return total;
         }, 0);
         
-        const currentBalance = account.openingBalance + transactionTotal;
+        const currentBalance = Number(account.openingBalance) + transactionTotal;
         return { ...account, currentBalance };
     });
   }, [accounts, transactions]);
@@ -159,15 +158,10 @@ export default function AccountsPage() {
   const confirmDelete = async () => {
     if (accountToDelete) {
         try {
-            // Firestore doesn't have cascading deletes, so we manually delete associated transactions.
-            const associatedTransactions = transactions.filter(t => t.accountId === accountToDelete.id || t.toAccountId === accountToDelete.id);
-            // This is not fully implemented yet in transactionService
-            // await Promise.all(associatedTransactions.map(t => deleteTransaction(t.id, t.type, t.investmentId)));
-            
             await deleteAccount(accountToDelete.id);
             await fetchData();
         } catch (error) {
-            console.error("Failed to delete account and associated transactions:", error);
+            console.error("Failed to delete account:", error);
         }
     }
     setDeleteAlertOpen(false);

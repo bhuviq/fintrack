@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -47,7 +46,7 @@ import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-provider';
 import Adsense from '@/components/adsense';
-import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 export default function DashboardPage() {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
@@ -65,17 +64,14 @@ export default function DashboardPage() {
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch only transactions from the last month for dashboard calculations
-      const fromDate = subMonths(new Date(), 1);
-      const toDate = new Date();
-
+      // Fetch all transactions to ensure current balances are calculated correctly across all history
       const [
         { transactions: fetchedTransactions },
         fetchedGoals,
         fetchedInvestments,
         fetchedAccounts,
       ] = await Promise.all([
-        getTransactions({ filters: { date: { from: fromDate, to: toDate } } }), 
+        getTransactions({ filters: {} }), 
         getGoals(),
         getInvestments(),
         getAccounts(),
@@ -108,9 +104,9 @@ export default function DashboardPage() {
         if (inv.category === 'Real Estate') {
           return quantity + (tx.type === 'buy' ? 1 : -1);
         }
-        return quantity + (tx.type === 'buy' ? tx.quantity : -tx.quantity);
+        return quantity + (tx.type === 'buy' ? Number(tx.quantity) : -Number(tx.quantity));
       }, 0);
-      return acc + inv.value * totalQuantity;
+      return acc + Number(inv.value) * totalQuantity;
     }, 0);
 
     const accountBalances = accounts.map((account) => {
@@ -122,20 +118,20 @@ export default function DashboardPage() {
           }
           // Credits to the account (money in)
           if (t.accountId === account.id && t.type === 'income') {
-              return total + t.amount;
+              return total + Number(t.amount);
           }
           if (t.toAccountId === account.id && t.type === 'transfer') {
-                 return total + t.amount;
+                 return total + Number(t.amount);
           }
 
           // Debits from the account (money out)
           if (t.accountId === account.id && (t.type === 'expense' || t.type === 'transfer' || t.type === 'investment')) {
-              return total - t.amount;
+              return total - Number(t.amount);
           }
           
           return total;
       }, 0);
-      return { ...account, currentBalance: account.openingBalance + transactionTotal };
+      return { ...account, currentBalance: Number(account.openingBalance) + transactionTotal };
     });
     
     const cashAndBrokerage = accountBalances
@@ -169,7 +165,7 @@ export default function DashboardPage() {
       })
       .forEach((t) => {
         spendingByCategory[t.category] =
-          (spendingByCategory[t.category] || 0) + t.amount;
+          (spendingByCategory[t.category] || 0) + Number(t.amount);
       });
     return Object.entries(spendingByCategory)
       .map(([name, value]) => ({ name, value }))

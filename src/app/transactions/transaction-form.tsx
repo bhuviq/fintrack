@@ -39,7 +39,7 @@ import {
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import type { Transaction, Account, Category, Investment } from '@/lib/types';
 
 
@@ -164,12 +164,13 @@ export function TransactionForm({
   React.useEffect(() => {
     if (isOpen) {
       if (transaction) {
+        const transDate = new Date(transaction.date);
         form.reset({
           id: transaction.id,
           description: transaction.description,
           amount: transaction.amount,
           type: transaction.type,
-          date: new Date(transaction.date),
+          date: isValid(transDate) ? transDate : new Date(),
           category: transaction.category,
           accountId: transaction.accountId,
           toAccountId: transaction.toAccountId,
@@ -512,7 +513,7 @@ export function TransactionForm({
                             !field.value && 'text-muted-foreground'
                           )}
                         >
-                          {field.value ? (
+                          {field.value instanceof Date && isValid(field.value) ? (
                             format(field.value, 'PPP')
                           ) : (
                             <span>Pick a date</span>

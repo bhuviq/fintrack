@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -38,7 +37,7 @@ import {
 } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Insurance } from '@/lib/types';
 import { useCurrency } from '@/context/currency-provider';
@@ -92,6 +91,8 @@ export function InsuranceForm({
   React.useEffect(() => {
     if (isOpen) {
       if (insurance) {
+        const start = new Date(insurance.startDate);
+        const end = new Date(insurance.endDate);
         form.reset({
           id: insurance.id,
           policyName: insurance.policyName,
@@ -101,8 +102,8 @@ export function InsuranceForm({
           coverage: insurance.coverage,
           premium: insurance.premium,
           premiumFrequency: insurance.premiumFrequency,
-          startDate: new Date(insurance.startDate),
-          endDate: new Date(insurance.endDate),
+          startDate: isValid(start) ? start : new Date(),
+          endDate: isValid(end) ? end : new Date(),
           currency: insurance.currency,
         });
       } else {
@@ -283,7 +284,7 @@ export function InsuranceForm({
                       <PopoverTrigger asChild>
                           <FormControl>
                           <Button variant={'outline'} className={cn('w-full pl-3 text-left font-normal',!field.value && 'text-muted-foreground')}>
-                              {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                              {field.value instanceof Date && isValid(field.value) ? format(field.value, 'PPP') : <span>Pick a date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                           </FormControl>
@@ -306,7 +307,7 @@ export function InsuranceForm({
                       <PopoverTrigger asChild>
                           <FormControl>
                           <Button variant={'outline'} className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}>
-                              {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                              {field.value instanceof Date && isValid(field.value) ? format(field.value, 'PPP') : <span>Pick a date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                           </FormControl>
@@ -332,5 +333,3 @@ export function InsuranceForm({
     </Sheet>
   );
 }
-
-    

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -33,7 +32,7 @@ import {
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import type { InvestmentTransaction, Currency } from '@/lib/types';
 
 import {
@@ -93,9 +92,10 @@ export function InvestmentTransactionForm({
   React.useEffect(() => {
     if (isOpen) {
       if (transaction) {
+        const transDate = new Date(transaction.date);
         form.reset({
           type: transaction.type,
-          date: new Date(transaction.date),
+          date: isValid(transDate) ? transDate : new Date(),
           quantity: transaction.quantity,
           price: transaction.price,
           unit:
@@ -183,7 +183,7 @@ export function InvestmentTransactionForm({
                             !field.value && 'text-muted-foreground'
                           )}
                         >
-                          {field.value ? (
+                          {field.value instanceof Date && isValid(field.value) ? (
                             format(field.value, 'PPP')
                           ) : (
                             <span>Pick a date</span>

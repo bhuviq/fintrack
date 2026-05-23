@@ -152,8 +152,8 @@ export function TransactionForm({
     [investments, selectedInvestmentCategory]
   );
 
-  const fromAccounts = accounts.filter(acc => acc.type === 'bank' || acc.type === 'credit-card');
-  const toAccounts = accounts.filter(acc => acc.type === 'bank' || acc.type === 'credit-card');
+  const fromAccounts = accounts.filter(acc => acc.type === 'bank' || acc.type === 'credit-card' || acc.type === 'broker');
+  const toAccounts = accounts.filter(acc => acc.type === 'bank' || acc.type === 'credit-card' || acc.type === 'broker');
   const investmentSourceAccounts = accounts.filter(acc => acc.type === 'broker' || acc.type === 'bank');
 
   const availableCategories = React.useMemo(

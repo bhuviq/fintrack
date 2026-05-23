@@ -53,17 +53,22 @@ export function InvestmentHistorySheet({
     return null;
   }
 
-  const { quantityString, netInvestment } = useMemo(() => {
+  const { quantityString, netInvestment, currentTotalValue, totalProfit, totalReturn, averageBuyPrice } = useMemo(() => {
     if (!investment.history || investment.history.length === 0) {
-      return { quantityString: "0", netInvestment: 0 };
+      return { quantityString: "0", netInvestment: 0, currentTotalValue: 0, totalProfit: 0, totalReturn: 0, averageBuyPrice: 0 };
     }
-    const { category, history } = investment;
+    const { category, history, value: currentPrice } = investment;
     
-    const calculatedNetInvestment = history.reduce((acc, t) => {
-        const value = t.quantity * t.price;
-        return t.type === 'buy' ? acc + value : acc - value;
+    const buyTransactions = history.filter(t => t.type === 'buy');
+    const totalBuyQuantity = buyTransactions.reduce((acc, t) => acc + (category === 'Real Estate' ? 1 : (Number(t.quantity) || 0)), 0);
+    const totalBuyCost = buyTransactions.reduce((acc, t) => {
+        const qty = category === 'Real Estate' ? 1 : (Number(t.quantity) || 0);
+        const price = Number(t.price) || 0;
+        return acc + (qty * price);
     }, 0);
+    const averageBuyPrice = totalBuyQuantity > 0 ? totalBuyCost / totalBuyQuantity : 0;
 
+    let totalQuantity = 0;
     let calculatedQuantityString = "0";
 
     if (category === 'Gold') {
@@ -79,13 +84,15 @@ export function InvestmentHistorySheet({
             .join(', ');
         
         calculatedQuantityString = formattedHoldings.length > 0 ? formattedHoldings : '0';
+        totalQuantity = Object.values(holdings).reduce((a, b) => a + b, 0);
 
     } else if (category === 'Real Estate') {
-        const totalProperties = history.reduce((acc, item) => acc + (item.type === 'buy' ? 1 : -1), 0);
-        calculatedQuantityString = `${totalProperties} propert${totalProperties === 1 ? 'y' : 'ies'}`;
+        totalQuantity = history.reduce((acc, item) => acc + (item.type === 'buy' ? 1 : -1), 0);
+        calculatedQuantityString = `${totalQuantity} propert${totalQuantity === 1 ? 'y' : 'ies'}`;
     } else {
-        const totalQuantity = history.reduce((acc, item) => {
-            return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
+        totalQuantity = history.reduce((acc, item) => {
+            const qty = Number(item.quantity) || 0;
+            return acc + (item.type === 'buy' ? qty : -qty);
         }, 0);
         
         const quantityFormatting: Intl.NumberFormatOptions = (category === "Mutual Funds")
@@ -95,7 +102,19 @@ export function InvestmentHistorySheet({
         calculatedQuantityString = totalQuantity.toLocaleString(undefined, quantityFormatting);
     }
     
-    return { quantityString: calculatedQuantityString, netInvestment: calculatedNetInvestment };
+    const calculatedCurrentValue = totalQuantity * currentPrice;
+    const calculatedNetInvestment = totalQuantity > 0 ? averageBuyPrice * totalQuantity : 0;
+    const calculatedProfit = totalQuantity > 0 ? (currentPrice - averageBuyPrice) * totalQuantity : 0;
+    const calculatedReturn = (averageBuyPrice > 0 && totalQuantity > 0) ? (calculatedProfit / (averageBuyPrice * totalQuantity)) * 100 : 0;
+
+    return { 
+      quantityString: calculatedQuantityString, 
+      netInvestment: calculatedNetInvestment,
+      currentTotalValue: calculatedCurrentValue,
+      totalProfit: calculatedProfit,
+      totalReturn: calculatedReturn,
+      averageBuyPrice: averageBuyPrice
+    };
 
   }, [investment]);
 
@@ -129,10 +148,16 @@ export function InvestmentHistorySheet({
             <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1">
               <span>Total Quantity:</span>
               <span className="font-medium text-right text-foreground">{quantityString}</span>
+              <span>Average Price:</span>
+              <span className="font-medium text-right text-foreground">{formatAmount(averageBuyPrice || 0, investment.currency)}</span>
               <span>Net Investment:</span>
-              <span className="font-medium text-right text-foreground">{formatAmount(netInvestment, investment.currency)}</span>
+              <span className="font-medium text-right text-foreground">{formatAmount(netInvestment || 0, investment.currency)}</span>
               <span>Current Value:</span>
-              <span className="font-medium text-right text-foreground">{formatAmount(investment.value, investment.currency)}</span>
+              <span className="font-medium text-right text-foreground">{formatAmount(currentTotalValue || 0, investment.currency)}</span>
+              <span>Total Profit:</span>
+              <span className={`font-medium text-right ${(totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatAmount(totalProfit || 0, investment.currency)} ({(totalReturn || 0).toFixed(2)}%)
+              </span>
             </div>
           </div>
           <Table>

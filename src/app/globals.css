@@ -85,4 +85,17 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* React Day Picker Dropdown Styles */
+  .rdp-vhidden {
+    @apply sr-only;
+  }
+  
+  .rdp-dropdown {
+    @apply h-8 rounded-md border border-input bg-background px-2 py-1 text-sm font-medium shadow-sm outline-none hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .rdp-caption_dropdowns {
+    @apply flex items-center justify-center gap-1;
+  }
 }

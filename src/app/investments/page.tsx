@@ -43,10 +43,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 
-type SortableKeys = keyof Investment | 'quantity' | 'netValue';
+type SortableKeys = keyof Investment | 'quantity' | 'netValue' | 'totalProfit' | 'totalReturn' | 'averageBuyPrice';
 
 export default function InvestmentsPage() {
   const [serverFetchedInvestments, setServerFetchedInvestments] = useState<Investment[]>([]);
+  const [allInvestments, setAllInvestments] = useState<Investment[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
@@ -73,8 +74,12 @@ export default function InvestmentsPage() {
 
   const fetchAuxiliaryData = useCallback(async () => {
     try {
-        const fetchedCategories = await getCategories();
+        const [fetchedCategories, fetchedAllInvestments] = await Promise.all([
+            getCategories(),
+            getInvestments()
+        ]);
         setCategories(fetchedCategories);
+        setAllInvestments(fetchedAllInvestments);
     } catch (error: any) {
         toast({
             variant: "destructive",
@@ -132,20 +137,105 @@ export default function InvestmentsPage() {
     [investmentCategories]
   );
   
-  const investmentsWithCalculatedFields = useMemo(() => {
-    return serverFetchedInvestments.map(investment => {
+  const calculateMetrics = useCallback((investments: Investment[]) => {
+    return investments.map(investment => {
       const { category, history } = investment;
-       if (!history || history.length === 0) {
-        return { ...investment, quantity: 0, netValue: 0 };
+      if (!history || history.length === 0) {
+        return { 
+          ...investment, 
+          quantity: 0, 
+          netValue: 0, 
+          totalProfit: 0, 
+          totalReturn: 0, 
+          averageBuyPrice: 0, 
+          investedAmount: 0,
+          change: Number(investment.change) || 0,
+          changeAmount: Number(investment.changeAmount) || 0
+        };
       }
+
       const quantity = history.reduce((acc, item) => {
+        const qty = Number(item.quantity) || 0;
         if (category === 'Real Estate') return acc + (item.type === 'buy' ? 1 : -1);
-        return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
+        return acc + (item.type === 'buy' ? qty : -qty);
       }, 0);
-      const netValue = quantity * investment.value;
-      return { ...investment, quantity, netValue };
+
+      const netValue = quantity * (Number(investment.value) || 0);
+
+      const buyTransactions = history.filter(item => item.type === 'buy');
+      const totalBuyQuantity = buyTransactions.reduce((acc, item) => {
+        const qty = category === 'Real Estate' ? 1 : (Number(item.quantity) || 0);
+        return acc + qty;
+      }, 0);
+      const totalBuyCost = buyTransactions.reduce((acc, item) => {
+        const qty = category === 'Real Estate' ? 1 : (Number(item.quantity) || 0);
+        const price = Number(item.price) || 0;
+        return acc + (qty * price);
+      }, 0);
+
+      const averageBuyPrice = totalBuyQuantity > 0 ? totalBuyCost / totalBuyQuantity : 0;
+      
+      const currentPrice = Number(investment.value) || 0;
+      const investedAmount = quantity > 0 ? averageBuyPrice * quantity : 0;
+      const totalProfit = quantity > 0 ? (currentPrice - averageBuyPrice) * quantity : 0;
+      const totalReturn = (averageBuyPrice > 0 && quantity > 0) 
+        ? (totalProfit / (averageBuyPrice * quantity)) * 100 
+        : (quantity > 0 ? 100 : 0);
+
+      return { 
+        ...investment, 
+        quantity, 
+        netValue, 
+        totalProfit, 
+        totalReturn, 
+        averageBuyPrice, 
+        investedAmount,
+        change: Number(investment.change) || 0,
+        changeAmount: Number(investment.changeAmount) || 0
+      };
     });
-  }, [serverFetchedInvestments]);
+  }, []);
+
+  const investmentsWithCalculatedFields = useMemo(() => {
+    return calculateMetrics(serverFetchedInvestments);
+  }, [serverFetchedInvestments, calculateMetrics]);
+
+  const allInvestmentsCalculated = useMemo(() => {
+    return calculateMetrics(allInvestments);
+  }, [allInvestments, calculateMetrics]);
+
+  const totalSummary = useMemo(() => {
+    const summary = allInvestmentsCalculated.reduce((acc, inv) => {
+      acc.totalInvested += inv.investedAmount;
+      acc.totalValue += inv.netValue;
+      acc.totalProfit += inv.totalProfit;
+      return acc;
+    }, { totalInvested: 0, totalValue: 0, totalProfit: 0 });
+
+    const totalReturn = summary.totalInvested > 0 
+      ? (summary.totalProfit / summary.totalInvested) * 100 
+      : 0;
+
+    return { ...summary, totalReturn };
+  }, [allInvestmentsCalculated]);
+
+  const categorySummary = useMemo(() => {
+    if (activeCategory === 'All') return null;
+
+    const filtered = allInvestmentsCalculated.filter(inv => inv.category === activeCategory);
+    const summary = filtered.reduce((acc, inv) => {
+      acc.totalInvested += inv.investedAmount;
+      acc.totalValue += inv.netValue;
+      acc.totalProfit += inv.totalProfit;
+      return acc;
+    }, { totalInvested: 0, totalValue: 0, totalProfit: 0 });
+
+    const totalReturn = summary.totalInvested > 0 
+      ? (summary.totalProfit / summary.totalInvested) * 100 
+      : 0;
+
+    return { ...summary, totalReturn };
+  }, [allInvestmentsCalculated, activeCategory]);
   
   
   const uniqueInvestmentTypes = useMemo(() => {
@@ -232,11 +322,14 @@ export default function InvestmentsPage() {
     }).format(amount);
   };
 
-  const formatAmount = (amount: number, currency: Currency) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatAmount = (amount: number, currency: Currency = 'INR') => {
+    const val = Number(amount);
+    if (isNaN(val)) return '—';
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: currency,
-    }).format(amount);
+      currency: currency || 'INR',
+      maximumFractionDigits: 2,
+    }).format(val);
   };
 
   const handleAddInvestment = () => {
@@ -408,15 +501,33 @@ export default function InvestmentsPage() {
   const renderTableSkeletons = () => (
     [...Array(pageSize)].map((_, i) => (
       <TableRow key={`skel-${i}`}>
-        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-        {activeCategory === 'All' && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-        {showSymbolColumn && <TableCell><Skeleton className="h-5 w-16" /></TableCell>}
-        {showTypeColumn && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
-        <TableCell><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
-        <TableCell><MoreHorizontal className="h-4 w-4" /></TableCell>
+        <TableCell className="py-4">
+          <div className="flex flex-col gap-1">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        </TableCell>
+        <TableCell className="text-right py-4">
+          <div className="flex flex-col gap-1 items-end">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </TableCell>
+        <TableCell className="text-right py-4">
+          <div className="flex flex-col gap-1 items-end">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </TableCell>
+        <TableCell className="text-right py-4">
+          <div className="flex flex-col gap-1 items-end">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </TableCell>
+        <TableCell className="py-4">
+          <Skeleton className="h-8 w-8 rounded-md ml-auto" />
+        </TableCell>
       </TableRow>
     ))
   );
@@ -432,6 +543,40 @@ export default function InvestmentsPage() {
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Investment
           </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="relative overflow-hidden border-none bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg">
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-indigo-100 uppercase tracking-wider">Overall Portfolio</p>
+            <div className="mt-2 flex flex-col gap-1">
+              <h3 className="text-2xl font-bold">{formatAmount(totalSummary.totalValue)}</h3>
+              <p className="text-xs text-indigo-100">Invested: {formatAmount(totalSummary.totalInvested)}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${totalSummary.totalProfit >= 0 ? 'bg-green-400/20 text-green-100' : 'bg-red-400/20 text-red-100'}`}>
+                  {totalSummary.totalProfit >= 0 ? '+' : ''}{formatAmount(totalSummary.totalProfit)} ({totalSummary.totalReturn.toFixed(2)}%)
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {categorySummary && (
+          <Card className="relative overflow-hidden border-none bg-white dark:bg-zinc-900 shadow-md border-l-4 border-indigo-500">
+            <CardContent className="p-6">
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{activeCategory} Category</p>
+              <div className="mt-2 flex flex-col gap-1">
+                <h3 className="text-2xl font-bold">{formatAmount(categorySummary.totalValue)}</h3>
+                <p className="text-xs text-muted-foreground">Invested: {formatAmount(categorySummary.totalInvested)}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${categorySummary.totalProfit >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {categorySummary.totalProfit >= 0 ? '+' : ''}{formatAmount(categorySummary.totalProfit)} ({categorySummary.totalReturn.toFixed(2)}%)
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -476,26 +621,18 @@ export default function InvestmentsPage() {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead onClick={() => requestSort('name')} className="cursor-pointer">
-                    <div className="flex items-center">Name {getSortIcon('name')}</div>
-                </TableHead>
-                {activeCategory === 'All' && <TableHead onClick={() => requestSort('category')} className="cursor-pointer">
-                    <div className="flex items-center">Category {getSortIcon('category')}</div>
-                </TableHead>}
-                {showSymbolColumn && <TableHead className="cursor-pointer" onClick={() => requestSort('symbol')}><div className="flex items-center">Symbol {getSortIcon('symbol')}</div></TableHead>}
-                {showTypeColumn && <TableHead className="cursor-pointer" onClick={() => requestSort('type')}><div className="flex items-center">Type {getSortIcon('type')}</div></TableHead>}
-                <TableHead className="text-right cursor-pointer" onClick={() => requestSort('quantity')}>
-                    <div className="flex items-center justify-end">Quantity {getSortIcon('quantity')}</div>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="cursor-pointer" onClick={() => requestSort('name')}>
+                    <div className="flex items-center">Investment {getSortIcon('name')}</div>
                 </TableHead>
                 <TableHead className="text-right cursor-pointer" onClick={() => requestSort('value')}>
-                    <div className="flex items-center justify-end">Price {getSortIcon('value')}</div>
+                    <div className="flex items-center justify-end">Market Price {getSortIcon('value')}</div>
+                </TableHead>
+                <TableHead className="text-right cursor-pointer" onClick={() => requestSort('totalProfit')}>
+                    <div className="flex items-center justify-end">Returns (%) {getSortIcon('totalProfit')}</div>
                 </TableHead>
                 <TableHead className="text-right cursor-pointer" onClick={() => requestSort('netValue')}>
-                    <div className="flex items-center justify-end">Value {getSortIcon('netValue')}</div>
-                </TableHead>
-                <TableHead className="text-right cursor-pointer" onClick={() => requestSort('change')}>
-                    <div className="flex items-center justify-end">Today's Change {getSortIcon('change')}</div>
+                    <div className="flex items-center justify-end">Current (Invested) {getSortIcon('netValue')}</div>
                 </TableHead>
                 <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
@@ -503,50 +640,78 @@ export default function InvestmentsPage() {
             <TableBody>
               {isLoading ? renderTableSkeletons() : filteredAndSortedInvestments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center h-24">No investments found.</TableCell>
+                  <TableCell colSpan={5} className="text-center h-24">No investments found.</TableCell>
                 </TableRow>
               ) : (
-                filteredAndSortedInvestments.map((investment) => (
-                  <TableRow key={investment.id}>
-                    <TableCell className="font-medium">{investment.name}</TableCell>
-                    {activeCategory === 'All' && <TableCell><Badge variant="outline">{investment.category}</Badge></TableCell>}
-                    {showSymbolColumn && <TableCell className="text-muted-foreground">{investment.symbol || 'N/A'}</TableCell>}
-                    {showTypeColumn && <TableCell className="text-muted-foreground">{investment.type || 'N/A'}</TableCell>}
-                    <TableCell className="text-right font-medium">{formatQuantity(investment)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatAmount(investment.value, investment.currency)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatAmount(investment.netValue, investment.currency)}</TableCell>
-                    <TableCell className={`text-right font-medium ${investment.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      <div className="flex items-center justify-end">
-                        {investment.change >= 0 ? <ArrowUp className="h-4 w-4 mr-1" /> : <ArrowDown className="h-4 w-4 mr-1" />}
-                        <span>{investment.change.toFixed(2)}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
+                filteredAndSortedInvestments.map((investment) => {
+                  const inv = investment as any;
+                  const profitColor = inv.totalProfit >= 0 ? 'text-green-600' : 'text-red-600';
+                  const changeColor = inv.changeAmount >= 0 ? 'text-green-600' : 'text-red-600';
+
+                  return (
+                    <TableRow key={investment.id} className="group hover:bg-muted/50 transition-colors">
+                      <TableCell className="py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-base text-foreground leading-tight">{investment.name}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{formatQuantity(investment)}</span>
+                            <span>•</span>
+                            <span>Avg. {formatAmount(inv.averageBuyPrice, investment.currency)}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell className="text-right py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-base">{formatAmount(investment.value, investment.currency)}</span>
+                          <div className={`flex items-center justify-end gap-1 text-xs ${changeColor}`}>
+                            {inv.changeAmount >= 0 ? '+' : ''}{formatNumber(inv.changeAmount)} ({inv.change.toFixed(2)}%)
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="text-right py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className={`font-bold text-base ${profitColor}`}>
+                            {inv.totalProfit >= 0 ? '+' : ''}{formatAmount(inv.totalProfit, investment.currency)}
+                          </span>
+                          <div className={`text-xs ${profitColor}`}>
+                            {inv.totalReturn.toFixed(2)}%
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="text-right py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-base">{formatAmount(inv.netValue, investment.currency)}</span>
+                          <span className="text-xs text-muted-foreground">{formatAmount(inv.investedAmount, investment.currency)}</span>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="py-4">
                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => handleViewHistory(investment)}>
-                                    <History className="mr-2 h-4 w-4" />
-                                    View History
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleEditInvestment(investment)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteInvestment(investment)}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewHistory(investment)}>
+                              <History className="mr-2 h-4 w-4" /> View History
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditInvestment(investment)}>
+                              <Edit className="mr-2 h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteInvestment(investment)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
                         </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

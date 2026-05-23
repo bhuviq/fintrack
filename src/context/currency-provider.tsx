@@ -6,6 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { getUserProfile } from '@/services/userService';
 import type { Currency } from '@/lib/types';
+export type { Currency };
 
 interface CurrencyContextType {
   currency: Currency;

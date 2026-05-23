@@ -5,3 +5,17 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyCwM8x_LwQ3b1C0AXF4PCowgy7n48ISnOw
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: fintrack-i368j.firebaseapp.com
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: fintrack-i368j
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: fintrack-i368j.firebasestorage.app
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "4864197010"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:4864197010:web:043bf46304df0f0ef5014b

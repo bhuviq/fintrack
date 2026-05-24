@@ -64,7 +64,11 @@ export function InvestmentHistorySheet({
     const totalBuyCost = buyTransactions.reduce((acc, t) => {
         const qty = category === 'Real Estate' ? 1 : (Number(t.quantity) || 0);
         const price = Number(t.price) || 0;
-        return acc + (qty * price);
+        const subtotal = qty * price;
+        const chargesTotal = (t.charges ?? []).reduce((sum, c) => {
+            return sum + (c.type === 'percentage' ? subtotal * c.value / 100 : c.value);
+        }, 0);
+        return acc + subtotal + chargesTotal;
     }, 0);
     const averageBuyPrice = totalBuyQuantity > 0 ? totalBuyCost / totalBuyQuantity : 0;
 
@@ -185,7 +189,20 @@ export function InvestmentHistorySheet({
                     {(item as InvestmentTransaction).unit ? ` ${(item as InvestmentTransaction).unit}` : ''}
                   </TableCell>
                   <TableCell className="text-right font-medium">{formatAmount(item.price, investment.currency)}</TableCell>
-                  <TableCell className="text-right font-medium">{formatAmount(item.quantity * item.price, investment.currency)}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {(() => {
+                      const sub = item.quantity * item.price;
+                      const charges = (item.charges ?? []).reduce((sum, c) =>
+                        sum + (c.type === 'percentage' ? sub * c.value / 100 : c.value), 0);
+                      const total = item.type === 'buy' ? sub + charges : sub - charges;
+                      return (
+                        <span title={charges > 0 ? `Subtotal: ${formatAmount(sub, investment.currency)} | Charges: ${formatAmount(charges, investment.currency)}` : undefined}>
+                          {formatAmount(total, investment.currency)}
+                          {charges > 0 && <span className="text-xs text-muted-foreground ml-1">*</span>}
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell>
                       <DropdownMenu>
                           <DropdownMenuTrigger asChild>

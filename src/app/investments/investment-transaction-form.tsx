@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,12 +29,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, isValid } from 'date-fns';
 import type { InvestmentTransaction, Currency } from '@/lib/types';
-
+import { Badge } from '@/components/ui/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Select,
   SelectContent,
@@ -42,6 +47,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { INVESTMENT_CHARGE_NAMES } from '@/lib/constants';
+
+const chargeSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  type: z.enum(['fixed', 'percentage']),
+  value: z.coerce.number().positive('Must be positive'),
+});
 
 const investmentTransactionSchema = z.object({
   type: z.enum(['buy', 'sell']),
@@ -53,6 +65,7 @@ const investmentTransactionSchema = z.object({
     .number()
     .positive({ message: 'Price must be a positive number.' }),
   unit: z.enum(['oz', 'gm']).optional(),
+  charges: z.array(chargeSchema).optional().default([]),
 });
 
 export type InvestmentTransactionFormValues = z.infer<
@@ -78,6 +91,8 @@ export function InvestmentTransactionForm({
   transaction,
   transactionIndex,
 }: InvestmentTransactionFormProps) {
+  const [chargesOpen, setChargesOpen] = React.useState(false);
+
   const form = useForm<InvestmentTransactionFormValues>({
     resolver: zodResolver(investmentTransactionSchema),
     defaultValues: {
@@ -86,9 +101,15 @@ export function InvestmentTransactionForm({
       quantity: undefined,
       price: undefined,
       unit: undefined,
+      charges: [],
     },
   });
-  
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'charges',
+  });
+
   React.useEffect(() => {
     if (isOpen) {
       if (transaction) {
@@ -101,7 +122,11 @@ export function InvestmentTransactionForm({
           unit:
             transaction.unit ||
             (investmentCategory === 'Gold' ? 'oz' : undefined),
+          charges: transaction.charges ?? [],
         });
+        if (transaction.charges && transaction.charges.length > 0) {
+          setChargesOpen(true);
+        }
       } else {
         form.reset({
           type: 'buy',
@@ -109,7 +134,9 @@ export function InvestmentTransactionForm({
           quantity: investmentCategory === 'Real Estate' ? 1 : undefined,
           price: undefined,
           unit: investmentCategory === 'Gold' ? 'oz' : undefined,
+          charges: [],
         });
+        setChargesOpen(false);
       }
     }
   }, [form, isOpen, transaction, investmentCategory]);
@@ -117,6 +144,26 @@ export function InvestmentTransactionForm({
   const handleSubmit = (values: InvestmentTransactionFormValues) => {
     onSubmit(values, transactionIndex);
     onOpenChange(false);
+  };
+
+  const watchedType = form.watch('type');
+  const watchedQuantity = form.watch('quantity');
+  const watchedPrice = form.watch('price');
+  const watchedCharges = form.watch('charges');
+
+  const subtotal = (Number(watchedQuantity) || 0) * (Number(watchedPrice) || 0);
+  const chargesBreakdown = (watchedCharges ?? []).map((c) => {
+    const amount = c.type === 'percentage' ? subtotal * (c.value || 0) / 100 : (c.value || 0);
+    return { name: c.name, type: c.type, value: c.value, amount };
+  });
+  const totalCharges = chargesBreakdown.reduce((sum, c) => sum + c.amount, 0);
+  const grandTotal = watchedType === 'buy' ? subtotal + totalCharges : subtotal - totalCharges;
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: investmentCurrency || 'INR',
+    }).format(amount);
   };
 
   return (
@@ -295,6 +342,151 @@ export function InvestmentTransactionForm({
                 </FormItem>
               )}
             />
+
+            {/* Charges Section */}
+            <Collapsible open={chargesOpen} onOpenChange={setChargesOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex w-full items-center justify-between p-2 hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Fees, Taxes & Charges</span>
+                    {fields.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {fields.length}
+                      </Badge>
+                    )}
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      'h-4 w-4 transition-transform',
+                      chargesOpen && 'rotate-180'
+                    )}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-2">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="flex items-start gap-2">
+                    <FormField
+                      control={form.control}
+                      name={`charges.${index}.name`}
+                      render={({ field: nameField }) => (
+                        <FormItem className="flex-1">
+                          {index === 0 && <FormLabel className="text-xs">Name</FormLabel>}
+                          <Select onValueChange={nameField.onChange} value={nameField.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-9">
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {INVESTMENT_CHARGE_NAMES.map((name) => (
+                                <SelectItem key={name} value={name}>
+                                  {name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`charges.${index}.type`}
+                      render={({ field: typeField }) => (
+                        <FormItem className="w-20">
+                          {index === 0 && <FormLabel className="text-xs">Type</FormLabel>}
+                          <Select onValueChange={typeField.onChange} value={typeField.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-9">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="fixed">Fixed</SelectItem>
+                              <SelectItem value="percentage">%</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`charges.${index}.value`}
+                      render={({ field: valueField }) => (
+                        <FormItem className="w-24">
+                          {index === 0 && <FormLabel className="text-xs">Value</FormLabel>}
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="any"
+                              placeholder="0"
+                              className="h-9"
+                              {...valueField}
+                              value={valueField.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className={cn(index === 0 && 'mt-6')}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => append({ name: '', type: 'fixed', value: 0 })}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Charge
+                </Button>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Cost Summary */}
+            {subtotal > 0 && (
+              <div className="rounded-lg border p-3 space-y-1 text-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal (qty x price)</span>
+                  <span>{formatCurrency(subtotal)}</span>
+                </div>
+                {chargesBreakdown.map((c, i) => (
+                  c.amount > 0 && (
+                    <div key={i} className="flex justify-between text-muted-foreground">
+                      <span>
+                        {c.name || 'Charge'} ({c.type === 'percentage' ? `${c.value}%` : 'fixed'})
+                      </span>
+                      <span>{watchedType === 'buy' ? '+' : '-'}{formatCurrency(c.amount)}</span>
+                    </div>
+                  )
+                ))}
+                {totalCharges > 0 && (
+                  <div className="flex justify-between font-medium pt-1 border-t">
+                    <span>Total ({watchedType === 'buy' ? 'Cost' : 'Proceeds'})</span>
+                    <span>{formatCurrency(grandTotal)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <SheetFooter>
               <SheetClose asChild>
                 <Button type="button" variant="outline">

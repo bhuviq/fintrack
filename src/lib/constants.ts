@@ -33,6 +33,17 @@ export const DEFAULT_INVESTMENT_CATEGORIES: DefaultCategory[] = [
   { name: 'Cryptocurrency', type: 'investment', isDefault: true },
 ];
 
+export const INVESTMENT_CHARGE_NAMES = [
+    'Brokerage',
+    'STT',
+    'Stamp Duty',
+    'GST',
+    'SEBI Charges',
+    'Exchange Charges',
+    'Capital Gains Tax',
+    'Other',
+] as const;
+
 export const ALL_DEFAULT_CATEGORIES: DefaultCategory[] = [
     ...DEFAULT_EXPENSE_CATEGORIES,
     ...DEFAULT_INCOME_CATEGORIES,

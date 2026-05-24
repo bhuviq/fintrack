@@ -73,6 +73,12 @@ export interface Goal {
 export type NewGoal = Omit<Goal, 'id' | 'userId' | 'current' | 'history'>;
 
 
+export interface InvestmentCharge {
+    name: string;
+    type: 'fixed' | 'percentage';
+    value: number;
+}
+
 export interface InvestmentTransaction {
     id: string;
     date: string; // ISO string
@@ -80,8 +86,9 @@ export interface InvestmentTransaction {
     quantity: number;
     price: number;
     unit?: 'oz' | 'gm';
+    charges?: InvestmentCharge[];
     // The ID of the master transaction in the top-level 'transactions' collection
-    masterTransactionId?: string; 
+    masterTransactionId?: string;
 }
 
 export interface Investment {

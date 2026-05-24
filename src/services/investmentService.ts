@@ -141,14 +141,24 @@ export const updateInvestmentTransaction = async (investmentId: string, index: n
 export const deleteInvestmentTransaction = async (investmentId: string, index: number): Promise<void> => {
     const investmentDocRef = doc(db, 'investments', investmentId);
     const investmentSnap = await getDoc(investmentDocRef);
-    
+
     if (investmentSnap.exists()) {
         const investment = investmentSnap.data() as Investment;
         const updatedHistory = [...(investment.history || [])];
+        const deletedTransaction = updatedHistory[index];
         updatedHistory.splice(index, 1);
 
-        await updateDoc(investmentDocRef, { 
+        await updateDoc(investmentDocRef, {
             history: updatedHistory
         });
+
+        // Also delete the linked main transaction if it exists
+        if (deletedTransaction?.masterTransactionId) {
+            try {
+                await deleteDoc(doc(db, 'transactions', deletedTransaction.masterTransactionId));
+            } catch {
+                // Main transaction may already be deleted, ignore
+            }
+        }
     }
 }

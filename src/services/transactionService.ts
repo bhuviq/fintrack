@@ -114,12 +114,25 @@ export const updateTransaction = async (id: string, transactionData: Partial<New
 };
 
 export const deleteTransaction = async (id: string, type: string, investmentId?: string): Promise<void> => {
-    // Deleting an investment transaction from here is complex because we'd need to find the corresponding
-    // history item in the investment document. For now, we prevent this. Users should delete
-    // from the investment history sheet, which would then trigger the main transaction deletion.
-    // This is a potential future improvement.
-    if (type === 'investment') {
-        throw new Error("Investment transactions cannot be deleted from this view. Please remove the entry from the investment's history page to maintain consistency.");
+    if (type === 'investment' && investmentId) {
+        // Check if the linked investment still exists and has this transaction in history
+        const investmentDocRef = doc(db, 'investments', investmentId);
+        const investmentSnap = await getDoc(investmentDocRef);
+
+        if (investmentSnap.exists()) {
+            const investment = investmentSnap.data() as Investment;
+            const historyIndex = (investment.history || []).findIndex(
+                (t: InvestmentTransaction) => t.masterTransactionId === id
+            );
+
+            if (historyIndex !== -1) {
+                // Remove the linked history entry from the investment
+                const updatedHistory = [...(investment.history || [])];
+                updatedHistory.splice(historyIndex, 1);
+                await updateDoc(investmentDocRef, { history: updatedHistory });
+            }
+        }
     }
+
     await deleteDoc(doc(db, "transactions", id));
 };

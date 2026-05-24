@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,12 +36,24 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, isValid } from 'date-fns';
-import type { Transaction, Account, Category, Investment } from '@/lib/types';
+import type { Transaction, Account, Category, Investment, InvestmentCharge } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { INVESTMENT_CHARGE_NAMES } from '@/lib/constants';
 
+const chargeSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  type: z.enum(['fixed', 'percentage']),
+  value: z.coerce.number().positive('Must be positive'),
+});
 
 const transactionSchema = z.object({
   id: z.string().optional(),
@@ -58,6 +70,7 @@ const transactionSchema = z.object({
   toAccountId: z.string().optional(),
   investmentId: z.string().optional(),
   investmentQuantity: z.coerce.number().optional(),
+  investmentCharges: z.array(chargeSchema).optional().default([]),
 }).refine(data => {
     if (data.type === 'transfer') {
         return !!data.toAccountId && data.toAccountId.length > 0;
@@ -124,6 +137,8 @@ export function TransactionForm({
   categories,
   investments,
 }: TransactionFormProps) {
+  const [chargesOpen, setChargesOpen] = React.useState(false);
+
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
@@ -136,7 +151,13 @@ export function TransactionForm({
       toAccountId: '',
       investmentId: '',
       investmentQuantity: undefined,
+      investmentCharges: [],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'investmentCharges',
   });
 
   const transactionType = form.watch('type');
@@ -146,7 +167,7 @@ export function TransactionForm({
     () => categories.filter(c => c.type === 'investment'),
     [categories]
   );
-  
+
   const filteredInvestments = React.useMemo(
     () => investments.filter(inv => inv.category === selectedInvestmentCategory),
     [investments, selectedInvestmentCategory]
@@ -160,7 +181,12 @@ export function TransactionForm({
     () => categories.filter((c) => c.type === transactionType && (c.type === 'income' || c.type === 'expense')),
     [transactionType, categories]
   );
-  
+
+  const selectedInvestment = React.useMemo(() => {
+    const investmentId = form.watch('investmentId');
+    return investments.find(inv => inv.id === investmentId);
+  }, [investments, form.watch('investmentId')]);
+
   React.useEffect(() => {
     if (isOpen) {
       if (transaction) {
@@ -176,6 +202,7 @@ export function TransactionForm({
           toAccountId: transaction.toAccountId,
           investmentId: transaction.investmentId,
           investmentQuantity: transaction.investmentQuantity,
+          investmentCharges: [],
         });
         if (transaction.type === 'investment' && transaction.investmentId) {
             const relatedInvestment = investments.find(inv => inv.id === transaction.investmentId);
@@ -185,6 +212,7 @@ export function TransactionForm({
         } else {
              setSelectedInvestmentCategory('');
         }
+        setChargesOpen(false);
       } else {
         form.reset({
           description: '',
@@ -196,8 +224,10 @@ export function TransactionForm({
           toAccountId: '',
           investmentId: '',
           investmentQuantity: undefined,
+          investmentCharges: [],
         });
         setSelectedInvestmentCategory('');
+        setChargesOpen(false);
       }
     }
   }, [transaction, form, isOpen, investments]);
@@ -209,16 +239,51 @@ export function TransactionForm({
         form.setValue('investmentId', '');
         form.setValue('toAccountId', '');
         form.setValue('accountId', '');
+        form.setValue('investmentCharges', []);
         setSelectedInvestmentCategory('');
+        setChargesOpen(false);
       }
     });
     return () => subscription.unsubscribe();
   }, [form, transaction]);
 
+  // Watched values for cost summary
+  const watchedAmount = form.watch('amount');
+  const watchedQuantity = form.watch('investmentQuantity');
+  const watchedCharges = form.watch('investmentCharges');
+
+  const costSummary = React.useMemo(() => {
+    const amount = Number(watchedAmount) || 0;
+    const qty = Number(watchedQuantity) || 0;
+    const charges = (watchedCharges ?? []) as InvestmentCharge[];
+
+    // For the transaction form, amount = total cost. Charges are additional.
+    // Subtotal (base investment) = amount - total fixed charges - percentage-based charges
+    // But percentage charges reference the subtotal, creating a circular dependency.
+    // Simpler: charges here are computed on the amount (total cost entered), displayed for info.
+    const chargesBreakdown = charges.map(c => ({
+      name: c.name,
+      type: c.type,
+      value: c.value,
+      amount: c.type === 'percentage' ? amount * (c.value || 0) / 100 : (c.value || 0),
+    }));
+    const totalCharges = chargesBreakdown.reduce((sum, c) => sum + c.amount, 0);
+    const baseAmount = amount - totalCharges;
+    const pricePerUnit = qty > 0 ? baseAmount / qty : 0;
+
+    return { chargesBreakdown, totalCharges, baseAmount, pricePerUnit };
+  }, [watchedAmount, watchedQuantity, watchedCharges]);
+
+  const formatCurrency = (amount: number) => {
+    const currency = selectedInvestment?.currency || 'INR';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+    }).format(amount);
+  };
 
   const handleSubmit = (values: TransactionFormValues) => {
-    // Build the data object explicitly to avoid 'undefined' fields which Firestore rejects
-    const submissionData: any = {
+    const submissionData: Record<string, unknown> = {
       description: values.description,
       amount: values.amount,
       type: values.type,
@@ -233,12 +298,13 @@ export function TransactionForm({
       submissionData.category = 'Investment';
       submissionData.investmentId = values.investmentId;
       submissionData.investmentQuantity = values.investmentQuantity;
+      if (values.investmentCharges && values.investmentCharges.length > 0) {
+        submissionData.investmentCharges = values.investmentCharges;
+      }
     } else {
-      // income or expense
       submissionData.category = values.category;
     }
 
-    // Clean up any remaining undefined values just in case
     Object.keys(submissionData).forEach(key => submissionData[key] === undefined && delete submissionData[key]);
 
     onSubmit({ ...submissionData, id: transaction?.id } as TransactionFormValues);
@@ -387,7 +453,7 @@ export function TransactionForm({
                     )}
                 />
             )}
-            
+
             <FormField
               control={form.control}
               name="description"
@@ -401,17 +467,17 @@ export function TransactionForm({
                 </FormItem>
               )}
             />
-            
+
             {transactionType === 'investment' && (
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <FormItem>
                       <FormLabel>Investment Category</FormLabel>
-                      <Select 
+                      <Select
                           value={selectedInvestmentCategory}
                           onValueChange={(value) => {
                               setSelectedInvestmentCategory(value);
-                              form.setValue('investmentId', ''); // Reset investment on category change
+                              form.setValue('investmentId', '');
                           }}
                       >
                           <FormControl>
@@ -434,9 +500,9 @@ export function TransactionForm({
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Investment Name</FormLabel>
-                        <Select 
-                            onValueChange={field.onChange} 
-                            value={field.value} 
+                        <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
                             disabled={!selectedInvestmentCategory}
                         >
                             <FormControl>
@@ -485,6 +551,154 @@ export function TransactionForm({
                     )}
                   />
                 </div>
+
+                {/* Charges Section */}
+                <Collapsible open={chargesOpen} onOpenChange={setChargesOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="flex w-full items-center justify-between p-2 hover:bg-muted/50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Fees, Taxes & Charges</span>
+                        {fields.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {fields.length}
+                          </Badge>
+                        )}
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 transition-transform',
+                          chargesOpen && 'rotate-180'
+                        )}
+                      />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 pt-2">
+                    {fields.map((field, index) => (
+                      <div key={field.id} className="flex items-start gap-2">
+                        <FormField
+                          control={form.control}
+                          name={`investmentCharges.${index}.name`}
+                          render={({ field: nameField }) => (
+                            <FormItem className="flex-1">
+                              {index === 0 && <FormLabel className="text-xs">Name</FormLabel>}
+                              <Select onValueChange={nameField.onChange} value={nameField.value}>
+                                <FormControl>
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {INVESTMENT_CHARGE_NAMES.map((name) => (
+                                    <SelectItem key={name} value={name}>
+                                      {name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`investmentCharges.${index}.type`}
+                          render={({ field: typeField }) => (
+                            <FormItem className="w-20">
+                              {index === 0 && <FormLabel className="text-xs">Type</FormLabel>}
+                              <Select onValueChange={typeField.onChange} value={typeField.value}>
+                                <FormControl>
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="fixed">Fixed</SelectItem>
+                                  <SelectItem value="percentage">%</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`investmentCharges.${index}.value`}
+                          render={({ field: valueField }) => (
+                            <FormItem className="w-24">
+                              {index === 0 && <FormLabel className="text-xs">Value</FormLabel>}
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="any"
+                                  placeholder="0"
+                                  className="h-9"
+                                  {...valueField}
+                                  value={valueField.value ?? ''}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className={cn(index === 0 && 'mt-6')}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                            onClick={() => remove(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => append({ name: '', type: 'fixed', value: 0 })}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Charge
+                    </Button>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Cost Summary */}
+                {(Number(watchedAmount) || 0) > 0 && costSummary.totalCharges > 0 && (
+                  <div className="rounded-lg border p-3 space-y-1 text-sm">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Total Cost (entered)</span>
+                      <span>{formatCurrency(Number(watchedAmount) || 0)}</span>
+                    </div>
+                    {costSummary.chargesBreakdown.map((c, i) => (
+                      c.amount > 0 && (
+                        <div key={i} className="flex justify-between text-muted-foreground">
+                          <span>
+                            {c.name || 'Charge'} ({c.type === 'percentage' ? `${c.value}%` : 'fixed'})
+                          </span>
+                          <span>-{formatCurrency(c.amount)}</span>
+                        </div>
+                      )
+                    ))}
+                    <div className="flex justify-between font-medium pt-1 border-t">
+                      <span>Base Investment</span>
+                      <span>{formatCurrency(costSummary.baseAmount)}</span>
+                    </div>
+                    {(Number(watchedQuantity) || 0) > 0 && (
+                      <div className="flex justify-between text-muted-foreground text-xs">
+                        <span>Price per unit</span>
+                        <span>{formatCurrency(costSummary.pricePerUnit)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
 
@@ -508,7 +722,7 @@ export function TransactionForm({
                 )}
               />
             )}
-            
+
             <FormField
               control={form.control}
               name="date"

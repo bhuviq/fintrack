@@ -30,6 +30,7 @@ export interface Transaction {
   investmentId?: string; // Link to investment document
   investmentQuantity?: number;
   investmentTransactionId?: string; // The ID of the corresponding transaction within the investment's history array
+  investmentCharges?: InvestmentCharge[];
 }
 
 export type NewTransaction = Omit<Transaction, 'id' | 'userId'>;

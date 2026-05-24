@@ -2,7 +2,7 @@
 'use client';
 
 import { db, auth } from '@/lib/firebase';
-import type { Transaction, NewTransaction, Investment, InvestmentTransaction } from '@/lib/types';
+import type { Transaction, NewTransaction, Investment, InvestmentTransaction, InvestmentCharge } from '@/lib/types';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, getDoc, writeBatch, orderBy, limit, DocumentSnapshot } from 'firebase/firestore';
 
 const transactionsCollection = collection(db, 'transactions');
@@ -65,13 +65,21 @@ export const addTransaction = async (transactionData: NewTransaction): Promise<s
         }
 
         const investment = investmentSnap.data() as Investment;
-        const pricePerUnit = transactionData.amount / transactionData.investmentQuantity;
+        const charges: InvestmentCharge[] = (transactionData as Record<string, unknown>).investmentCharges as InvestmentCharge[] ?? [];
+
+        // Compute total charges to derive base price per unit
+        const totalCharges = charges.reduce((sum, c) => {
+            return sum + (c.type === 'percentage' ? transactionData.amount * c.value / 100 : c.value);
+        }, 0);
+        const baseAmount = transactionData.amount - totalCharges;
+        const pricePerUnit = baseAmount / transactionData.investmentQuantity;
 
         const investmentTransaction: Omit<InvestmentTransaction, 'id'> = {
             date: transactionData.date,
             type: 'buy', // Currently only support buying from transaction form
             quantity: transactionData.investmentQuantity,
             price: pricePerUnit,
+            ...(charges.length > 0 ? { charges } : {}),
         };
 
         const newInvestmentHistory = [...(investment.history || []), { ...investmentTransaction, id: new Date().toISOString() }];

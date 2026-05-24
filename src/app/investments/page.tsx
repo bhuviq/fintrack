@@ -170,11 +170,7 @@ export default function InvestmentsPage() {
       const totalBuyCost = buyTransactions.reduce((acc, item) => {
         const qty = category === 'Real Estate' ? 1 : (Number(item.quantity) || 0);
         const price = Number(item.price) || 0;
-        const subtotal = qty * price;
-        const chargesTotal = (item.charges ?? []).reduce((sum, c) => {
-          return sum + (c.type === 'percentage' ? subtotal * c.value / 100 : c.value);
-        }, 0);
-        return acc + subtotal + chargesTotal;
+        return acc + (qty * price);
       }, 0);
 
       const averageBuyPrice = totalBuyQuantity > 0 ? totalBuyCost / totalBuyQuantity : 0;

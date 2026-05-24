@@ -64,11 +64,7 @@ export function InvestmentHistorySheet({
     const totalBuyCost = buyTransactions.reduce((acc, t) => {
         const qty = category === 'Real Estate' ? 1 : (Number(t.quantity) || 0);
         const price = Number(t.price) || 0;
-        const subtotal = qty * price;
-        const chargesTotal = (t.charges ?? []).reduce((sum, c) => {
-            return sum + (c.type === 'percentage' ? subtotal * c.value / 100 : c.value);
-        }, 0);
-        return acc + subtotal + chargesTotal;
+        return acc + (qty * price);
     }, 0);
     const averageBuyPrice = totalBuyQuantity > 0 ? totalBuyCost / totalBuyQuantity : 0;
 

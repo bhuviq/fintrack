@@ -36,9 +36,10 @@ import { InvestmentForm, type InvestmentFormValues } from './investment-form';
 import { InvestmentHistorySheet } from './investment-history-sheet';
 import { InvestmentTransactionForm, type InvestmentTransactionFormValues } from './investment-transaction-form';
 import { format } from 'date-fns';
-import { getInvestments, getPaginatedInvestments, addInvestment, updateInvestment, deleteInvestment, addInvestmentTransaction, updateInvestmentTransaction, deleteInvestmentTransaction } from '@/services/investmentService';
+import { getInvestments, getPaginatedInvestments, addInvestment, updateInvestment, deleteInvestment, addInvestmentTransaction, updateInvestmentTransaction, deleteInvestmentTransaction, addInvestmentTransactionWithAccount, updateInvestmentTransactionWithAccount } from '@/services/investmentService';
 import { getCategories } from '@/services/categoryService';
-import type { Investment, InvestmentTransaction, Category, NewInvestment, Currency } from '@/lib/types';
+import { getAccounts } from '@/services/accountService';
+import type { Investment, InvestmentTransaction, Category, Account, NewInvestment, Currency } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +50,7 @@ export default function InvestmentsPage() {
   const [serverFetchedInvestments, setServerFetchedInvestments] = useState<Investment[]>([]);
   const [allInvestments, setAllInvestments] = useState<Investment[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -74,13 +76,15 @@ export default function InvestmentsPage() {
 
   const fetchAuxiliaryData = useCallback(async () => {
     try {
-        const [fetchedCategories, fetchedAllInvestments] = await Promise.all([
+        const [fetchedCategories, fetchedAllInvestments, fetchedAccounts] = await Promise.all([
             getCategories(),
-            getInvestments()
+            getInvestments(),
+            getAccounts()
         ]);
         setCategories(fetchedCategories);
         setAllInvestments(fetchedAllInvestments);
-    } catch (error: any) {
+        setAccounts(fetchedAccounts);
+    } catch (error: unknown) {
         toast({
             variant: "destructive",
             title: "Error",
@@ -132,6 +136,11 @@ export default function InvestmentsPage() {
     [categories]
   );
 
+  const investmentAccounts = useMemo(
+    () => accounts.filter((a) => a.type === 'broker' || a.type === 'bank'),
+    [accounts]
+  );
+
   const portfolioCategories = useMemo(
     () => ['All', ...investmentCategories.map(c => c.name)],
     [investmentCategories]
@@ -140,55 +149,59 @@ export default function InvestmentsPage() {
   const calculateMetrics = useCallback((investments: Investment[]) => {
     return investments.map(investment => {
       const { category, history } = investment;
-      if (!history || history.length === 0) {
-        return { 
-          ...investment, 
-          quantity: 0, 
-          netValue: 0, 
-          totalProfit: 0, 
-          totalReturn: 0, 
-          averageBuyPrice: 0, 
+      const openingQty = Number(investment.openingQuantity) || 0;
+      const openingPrice = Number(investment.openingPrice) || 0;
+
+      if ((!history || history.length === 0) && openingQty === 0) {
+        return {
+          ...investment,
+          quantity: 0,
+          netValue: 0,
+          totalProfit: 0,
+          totalReturn: 0,
+          averageBuyPrice: 0,
           investedAmount: 0,
           change: Number(investment.change) || 0,
           changeAmount: Number(investment.changeAmount) || 0
         };
       }
 
-      const quantity = history.reduce((acc, item) => {
+      const historyQuantity = (history || []).reduce((acc, item) => {
         const qty = Number(item.quantity) || 0;
         if (category === 'Real Estate') return acc + (item.type === 'buy' ? 1 : -1);
         return acc + (item.type === 'buy' ? qty : -qty);
       }, 0);
 
+      const quantity = historyQuantity + openingQty;
       const netValue = quantity * (Number(investment.value) || 0);
 
-      const buyTransactions = history.filter(item => item.type === 'buy');
+      const buyTransactions = (history || []).filter(item => item.type === 'buy');
       const totalBuyQuantity = buyTransactions.reduce((acc, item) => {
         const qty = category === 'Real Estate' ? 1 : (Number(item.quantity) || 0);
         return acc + qty;
-      }, 0);
+      }, 0) + openingQty;
       const totalBuyCost = buyTransactions.reduce((acc, item) => {
         const qty = category === 'Real Estate' ? 1 : (Number(item.quantity) || 0);
         const price = Number(item.price) || 0;
         return acc + (qty * price);
-      }, 0);
+      }, 0) + (openingQty * openingPrice);
 
       const averageBuyPrice = totalBuyQuantity > 0 ? totalBuyCost / totalBuyQuantity : 0;
-      
+
       const currentPrice = Number(investment.value) || 0;
       const investedAmount = quantity > 0 ? averageBuyPrice * quantity : 0;
       const totalProfit = quantity > 0 ? (currentPrice - averageBuyPrice) * quantity : 0;
-      const totalReturn = (averageBuyPrice > 0 && quantity > 0) 
-        ? (totalProfit / (averageBuyPrice * quantity)) * 100 
+      const totalReturn = (averageBuyPrice > 0 && quantity > 0)
+        ? (totalProfit / (averageBuyPrice * quantity)) * 100
         : (quantity > 0 ? 100 : 0);
 
-      return { 
-        ...investment, 
-        quantity, 
-        netValue, 
-        totalProfit, 
-        totalReturn, 
-        averageBuyPrice, 
+      return {
+        ...investment,
+        quantity,
+        netValue,
+        totalProfit,
+        totalReturn,
+        averageBuyPrice,
         investedAmount,
         change: Number(investment.change) || 0,
         changeAmount: Number(investment.changeAmount) || 0
@@ -436,10 +449,23 @@ export default function InvestmentsPage() {
             (newTransactionData as InvestmentTransaction).charges = data.charges;
         }
 
+        const accountId = data.accountId || '';
+
         if (index !== undefined) {
-            await updateInvestmentTransaction(historyInvestment.id, index, newTransactionData);
+            const existingTransaction = historyInvestment.history?.[index];
+            const hadAccount = !!existingTransaction?.masterTransactionId || !!existingTransaction?.accountId;
+
+            if (accountId || hadAccount) {
+                await updateInvestmentTransactionWithAccount(historyInvestment.id, index, newTransactionData, accountId, historyInvestment.name);
+            } else {
+                await updateInvestmentTransaction(historyInvestment.id, index, newTransactionData);
+            }
         } else {
-            await addInvestmentTransaction(historyInvestment.id, newTransactionData);
+            if (accountId) {
+                await addInvestmentTransactionWithAccount(historyInvestment.id, newTransactionData, accountId, historyInvestment.name);
+            } else {
+                await addInvestmentTransaction(historyInvestment.id, newTransactionData);
+            }
         }
         
         const updatedData = await getInvestments(); // Fetch all to update history sheet correctly
@@ -460,34 +486,38 @@ export default function InvestmentsPage() {
 
   const formatQuantity = (investment: Investment) => {
     const { category, history } = investment;
+    const openingQty = Number(investment.openingQuantity) || 0;
 
-    if (!history || history.length === 0) {
+    if ((!history || history.length === 0) && openingQty === 0) {
       return '0';
     }
 
     if (category === 'Real Estate') {
-      const quantity = history.reduce((acc, item) => acc + (item.type === 'buy' ? 1 : -1), 0);
+      const quantity = (history || []).reduce((acc, item) => acc + (item.type === 'buy' ? 1 : -1), 0) + openingQty;
       return quantity.toString();
     }
 
     if (category === 'Gold') {
         const holdings: { [key: string]: number } = {};
-        (history as InvestmentTransaction[]).forEach(t => {
-            const unit = t.unit || 'oz'; // Default to oz for backward compatibility
+        ((history || []) as InvestmentTransaction[]).forEach(t => {
+            const unit = t.unit || 'oz';
             const currentQty = holdings[unit] || 0;
             holdings[unit] = currentQty + (t.type === 'buy' ? t.quantity : -t.quantity);
         });
+        if (openingQty > 0) {
+            holdings['oz'] = (holdings['oz'] || 0) + openingQty;
+        }
 
         const formattedHoldings = Object.entries(holdings)
-            .filter(([, qty]) => qty > 0.0001) // Avoid floating point dust
+            .filter(([, qty]) => qty > 0.0001)
             .map(([unit, qty]) => `${qty.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unit}`);
 
         return formattedHoldings.length > 0 ? formattedHoldings.join(', ') : '0';
     }
 
-    const quantity = history.reduce((acc, item) => {
+    const quantity = (history || []).reduce((acc, item) => {
         return acc + (item.type === 'buy' ? item.quantity : -item.quantity);
-    }, 0);
+    }, 0) + openingQty;
 
     if (category === 'Mutual Funds') {
         return quantity.toLocaleString(undefined, {
@@ -495,7 +525,7 @@ export default function InvestmentsPage() {
             maximumFractionDigits: 4,
         });
     }
-    
+
     return quantity.toLocaleString(undefined, {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
@@ -778,7 +808,7 @@ export default function InvestmentsPage() {
         onEditTransaction={handleEditTransactionHistory}
         onDeleteTransaction={handleDeleteTransactionHistory}
       />
-       <InvestmentTransactionForm 
+       <InvestmentTransactionForm
         isOpen={isTransactionSheetOpen}
         onOpenChange={setIsTransactionSheetOpen}
         onSubmit={handleSaveInvestmentTransaction}
@@ -786,6 +816,7 @@ export default function InvestmentsPage() {
         investmentCurrency={historyInvestment?.currency}
         transaction={editingTransaction?.transaction}
         transactionIndex={editingTransaction?.index}
+        accounts={investmentAccounts}
        />
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>

@@ -47,6 +47,8 @@ const investmentSchema = z.object({
     .number()
     .positive({ message: 'Value must be a positive number.' }),
   currency: z.enum(['USD', 'GBP', 'INR']),
+  openingQuantity: z.coerce.number().nonnegative().optional(),
+  openingPrice: z.coerce.number().nonnegative().optional(),
 });
 
 export type InvestmentFormValues = z.infer<typeof investmentSchema>;
@@ -115,6 +117,8 @@ export function InvestmentForm({
           type: investment.type,
           value: investment.value,
           currency: investment.currency,
+          openingQuantity: investment.openingQuantity,
+          openingPrice: investment.openingPrice,
         });
       } else {
         form.reset({
@@ -124,6 +128,8 @@ export function InvestmentForm({
           type: '',
           value: undefined,
           currency: globalCurrency,
+          openingQuantity: undefined,
+          openingPrice: undefined,
         });
       }
     }
@@ -283,6 +289,47 @@ export function InvestmentForm({
                   )}
                 />
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="openingQuantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Opening Quantity</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 100"
+                        step="any"
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="openingPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Opening Avg Price</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 150.50"
+                        step="any"
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">For previously held investments not linked to any account</p>
             <SheetFooter>
               <SheetClose asChild>
                 <Button type="button" variant="outline">

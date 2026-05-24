@@ -53,19 +53,22 @@ export function InvestmentHistorySheet({
     return null;
   }
 
+  const openingQty = Number(investment.openingQuantity) || 0;
+  const openingPrice = Number(investment.openingPrice) || 0;
+
   const { quantityString, netInvestment, currentTotalValue, totalProfit, totalReturn, averageBuyPrice } = useMemo(() => {
-    if (!investment.history || investment.history.length === 0) {
+    if ((!investment.history || investment.history.length === 0) && openingQty === 0) {
       return { quantityString: "0", netInvestment: 0, currentTotalValue: 0, totalProfit: 0, totalReturn: 0, averageBuyPrice: 0 };
     }
     const { category, history, value: currentPrice } = investment;
-    
-    const buyTransactions = history.filter(t => t.type === 'buy');
-    const totalBuyQuantity = buyTransactions.reduce((acc, t) => acc + (category === 'Real Estate' ? 1 : (Number(t.quantity) || 0)), 0);
+
+    const buyTransactions = (history || []).filter(t => t.type === 'buy');
+    const totalBuyQuantity = buyTransactions.reduce((acc, t) => acc + (category === 'Real Estate' ? 1 : (Number(t.quantity) || 0)), 0) + openingQty;
     const totalBuyCost = buyTransactions.reduce((acc, t) => {
         const qty = category === 'Real Estate' ? 1 : (Number(t.quantity) || 0);
         const price = Number(t.price) || 0;
         return acc + (qty * price);
-    }, 0);
+    }, 0) + (openingQty * openingPrice);
     const averageBuyPrice = totalBuyQuantity > 0 ? totalBuyCost / totalBuyQuantity : 0;
 
     let totalQuantity = 0;
@@ -73,42 +76,45 @@ export function InvestmentHistorySheet({
 
     if (category === 'Gold') {
         const holdings: { [key: string]: number } = {};
-        (history as InvestmentTransaction[]).forEach(t => {
+        ((history || []) as InvestmentTransaction[]).forEach(t => {
             const unit = t.unit || 'oz';
             holdings[unit] = (holdings[unit] || 0) + (t.type === 'buy' ? t.quantity : -t.quantity);
         });
+        if (openingQty > 0) {
+            holdings['oz'] = (holdings['oz'] || 0) + openingQty;
+        }
 
         const formattedHoldings = Object.entries(holdings)
             .filter(([, qty]) => qty > 0.0001)
             .map(([unit, qty]) => `${qty.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${unit}`)
             .join(', ');
-        
+
         calculatedQuantityString = formattedHoldings.length > 0 ? formattedHoldings : '0';
         totalQuantity = Object.values(holdings).reduce((a, b) => a + b, 0);
 
     } else if (category === 'Real Estate') {
-        totalQuantity = history.reduce((acc, item) => acc + (item.type === 'buy' ? 1 : -1), 0);
+        totalQuantity = (history || []).reduce((acc, item) => acc + (item.type === 'buy' ? 1 : -1), 0) + openingQty;
         calculatedQuantityString = `${totalQuantity} propert${totalQuantity === 1 ? 'y' : 'ies'}`;
     } else {
-        totalQuantity = history.reduce((acc, item) => {
+        totalQuantity = (history || []).reduce((acc, item) => {
             const qty = Number(item.quantity) || 0;
             return acc + (item.type === 'buy' ? qty : -qty);
-        }, 0);
-        
+        }, 0) + openingQty;
+
         const quantityFormatting: Intl.NumberFormatOptions = (category === "Mutual Funds")
             ? { minimumFractionDigits: 2, maximumFractionDigits: 4 }
             : { minimumFractionDigits: 0, maximumFractionDigits: 2 }
 
         calculatedQuantityString = totalQuantity.toLocaleString(undefined, quantityFormatting);
     }
-    
+
     const calculatedCurrentValue = totalQuantity * currentPrice;
     const calculatedNetInvestment = totalQuantity > 0 ? averageBuyPrice * totalQuantity : 0;
     const calculatedProfit = totalQuantity > 0 ? (currentPrice - averageBuyPrice) * totalQuantity : 0;
     const calculatedReturn = (averageBuyPrice > 0 && totalQuantity > 0) ? (calculatedProfit / (averageBuyPrice * totalQuantity)) * 100 : 0;
 
-    return { 
-      quantityString: calculatedQuantityString, 
+    return {
+      quantityString: calculatedQuantityString,
       netInvestment: calculatedNetInvestment,
       currentTotalValue: calculatedCurrentValue,
       totalProfit: calculatedProfit,
@@ -116,7 +122,7 @@ export function InvestmentHistorySheet({
       averageBuyPrice: averageBuyPrice
     };
 
-  }, [investment]);
+  }, [investment, openingQty, openingPrice]);
 
   const formatAmount = (amount: number, currency: Currency) => {
     return new Intl.NumberFormat('en-US', {
@@ -148,6 +154,14 @@ export function InvestmentHistorySheet({
             <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1">
               <span>Total Quantity:</span>
               <span className="font-medium text-right text-foreground">{quantityString}</span>
+              {openingQty > 0 && (
+                <>
+                  <span>Opening Balance:</span>
+                  <span className="font-medium text-right text-foreground">
+                    {openingQty} @ {formatAmount(openingPrice, investment.currency)}
+                  </span>
+                </>
+              )}
               <span>Average Price:</span>
               <span className="font-medium text-right text-foreground">{formatAmount(averageBuyPrice || 0, investment.currency)}</span>
               <span>Net Investment:</span>

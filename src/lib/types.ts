@@ -90,6 +90,7 @@ export interface InvestmentTransaction {
     charges?: InvestmentCharge[];
     // The ID of the master transaction in the top-level 'transactions' collection
     masterTransactionId?: string;
+    accountId?: string;
 }
 
 export interface Investment {
@@ -104,6 +105,8 @@ export interface Investment {
     category: string;
     currency: Currency;
     history: InvestmentTransaction[];
+    openingQuantity?: number;
+    openingPrice?: number;
 }
 export type NewInvestment = Omit<Investment, 'id'|'userId'| 'change' | 'changeAmount' | 'history'>;
 

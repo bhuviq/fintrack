@@ -1,7 +1,7 @@
 
 import { db, auth } from '@/lib/firebase';
-import type { Investment, NewInvestment, InvestmentTransaction } from '@/lib/types';
-import { collection, getDocs, getDoc, addDoc, doc, updateDoc, deleteDoc, query, where,getCountFromServer, orderBy, limit, startAfter } from 'firebase/firestore';
+import type { Investment, NewInvestment, InvestmentTransaction, NewTransaction } from '@/lib/types';
+import { collection, getDocs, getDoc, addDoc, doc, updateDoc, deleteDoc, query, where, getCountFromServer, orderBy, limit, startAfter, writeBatch } from 'firebase/firestore';
 
 const investmentsCollection = collection(db, 'investments');
 
@@ -162,3 +162,131 @@ export const deleteInvestmentTransaction = async (investmentId: string, index: n
         }
     }
 }
+
+const buildMainTransactionData = (
+    transaction: Omit<InvestmentTransaction, 'id'>,
+    accountId: string,
+    investmentId: string,
+    investmentName: string
+): Omit<NewTransaction, 'userId'> => {
+    const subtotal = transaction.quantity * transaction.price;
+    const charges = (transaction.charges ?? []).reduce((sum, c) =>
+        sum + (c.type === 'percentage' ? subtotal * c.value / 100 : c.value), 0);
+    const totalAmount = transaction.type === 'buy' ? subtotal + charges : subtotal - charges;
+
+    return {
+        description: `${transaction.type === 'buy' ? 'Buy' : 'Sell'} ${investmentName}`,
+        amount: totalAmount,
+        type: 'investment',
+        date: transaction.date,
+        category: 'Investment',
+        accountId,
+        investmentId,
+        investmentQuantity: transaction.quantity,
+        ...(transaction.charges && transaction.charges.length > 0 ? { investmentCharges: transaction.charges } : {}),
+    };
+};
+
+export const addInvestmentTransactionWithAccount = async (
+    investmentId: string,
+    transaction: Omit<InvestmentTransaction, 'id'>,
+    accountId: string,
+    investmentName: string
+): Promise<void> => {
+    const userId = getUserId();
+    const investmentDocRef = doc(db, 'investments', investmentId);
+    const investmentSnap = await getDoc(investmentDocRef);
+
+    if (!investmentSnap.exists()) throw new Error("Investment not found.");
+
+    const investment = investmentSnap.data() as Investment;
+    const batch = writeBatch(db);
+
+    // 1. Create main transaction record
+    const mainTxRef = doc(collection(db, 'transactions'));
+    const mainTxData = buildMainTransactionData(transaction, accountId, investmentId, investmentName);
+    batch.set(mainTxRef, { ...mainTxData, userId, investmentTransactionId: mainTxRef.id });
+
+    // 2. Add to investment history with links
+    const newHistoryEntry: InvestmentTransaction = {
+        ...transaction,
+        id: new Date().toISOString(),
+        masterTransactionId: mainTxRef.id,
+        accountId,
+    };
+    if (!transaction.unit) {
+        delete (newHistoryEntry as Partial<InvestmentTransaction>).unit;
+    }
+    const updatedHistory = [...(investment.history || []), newHistoryEntry];
+    batch.update(investmentDocRef, { history: updatedHistory });
+
+    await batch.commit();
+};
+
+export const updateInvestmentTransactionWithAccount = async (
+    investmentId: string,
+    index: number,
+    transaction: Omit<InvestmentTransaction, 'id'>,
+    accountId: string,
+    investmentName: string
+): Promise<void> => {
+    const userId = getUserId();
+    const investmentDocRef = doc(db, 'investments', investmentId);
+    const investmentSnap = await getDoc(investmentDocRef);
+
+    if (!investmentSnap.exists()) throw new Error("Investment not found.");
+
+    const investment = investmentSnap.data() as Investment;
+    const updatedHistory = [...(investment.history || [])];
+    const existingEntry = updatedHistory[index];
+    const hadAccount = !!existingEntry?.masterTransactionId;
+
+    const batch = writeBatch(db);
+
+    if (accountId) {
+        // Create or update main transaction
+        const mainTxData = buildMainTransactionData(transaction, accountId, investmentId, investmentName);
+
+        if (hadAccount && existingEntry.masterTransactionId) {
+            // Update existing main transaction
+            const existingTxRef = doc(db, 'transactions', existingEntry.masterTransactionId);
+            batch.update(existingTxRef, { ...mainTxData, userId });
+
+            updatedHistory[index] = {
+                ...transaction,
+                id: existingEntry.id,
+                masterTransactionId: existingEntry.masterTransactionId,
+                accountId,
+            };
+        } else {
+            // Create new main transaction
+            const mainTxRef = doc(collection(db, 'transactions'));
+            batch.set(mainTxRef, { ...mainTxData, userId, investmentTransactionId: mainTxRef.id });
+
+            updatedHistory[index] = {
+                ...transaction,
+                id: existingEntry.id,
+                masterTransactionId: mainTxRef.id,
+                accountId,
+            };
+        }
+    } else {
+        // No account — remove linked main transaction if it existed
+        if (hadAccount && existingEntry.masterTransactionId) {
+            const existingTxRef = doc(db, 'transactions', existingEntry.masterTransactionId);
+            batch.delete(existingTxRef);
+        }
+
+        updatedHistory[index] = {
+            ...transaction,
+            id: existingEntry.id,
+        };
+    }
+
+    if (!transaction.unit) {
+        delete (updatedHistory[index] as Partial<InvestmentTransaction>).unit;
+    }
+
+    batch.update(investmentDocRef, { history: updatedHistory });
+    await batch.commit();
+};

@@ -33,7 +33,7 @@ import { CalendarIcon, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, isValid } from 'date-fns';
-import type { InvestmentTransaction, Currency } from '@/lib/types';
+import type { InvestmentTransaction, Currency, Account } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import {
   Collapsible,
@@ -66,6 +66,7 @@ const investmentTransactionSchema = z.object({
     .positive({ message: 'Price must be a positive number.' }),
   unit: z.enum(['oz', 'gm']).optional(),
   charges: z.array(chargeSchema).optional().default([]),
+  accountId: z.string().optional(),
 });
 
 export type InvestmentTransactionFormValues = z.infer<
@@ -80,6 +81,7 @@ interface InvestmentTransactionFormProps {
   investmentCurrency?: Currency;
   transaction?: InvestmentTransaction;
   transactionIndex?: number;
+  accounts?: Account[];
 }
 
 export function InvestmentTransactionForm({
@@ -90,6 +92,7 @@ export function InvestmentTransactionForm({
   investmentCurrency,
   transaction,
   transactionIndex,
+  accounts,
 }: InvestmentTransactionFormProps) {
   const [chargesOpen, setChargesOpen] = React.useState(false);
 
@@ -102,6 +105,7 @@ export function InvestmentTransactionForm({
       price: undefined,
       unit: undefined,
       charges: [],
+      accountId: '',
     },
   });
 
@@ -123,6 +127,7 @@ export function InvestmentTransactionForm({
             transaction.unit ||
             (investmentCategory === 'Gold' ? 'oz' : undefined),
           charges: transaction.charges ?? [],
+          accountId: transaction.accountId ?? '',
         });
         if (transaction.charges && transaction.charges.length > 0) {
           setChargesOpen(true);
@@ -135,6 +140,7 @@ export function InvestmentTransactionForm({
           price: undefined,
           unit: investmentCategory === 'Gold' ? 'oz' : undefined,
           charges: [],
+          accountId: '',
         });
         setChargesOpen(false);
       }
@@ -460,6 +466,38 @@ export function InvestmentTransactionForm({
                 </Button>
               </CollapsibleContent>
             </Collapsible>
+
+            {/* Account Selector */}
+            {accounts && accounts.length > 0 && (
+              <FormField
+                control={form.control}
+                name="accountId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Account (optional)</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="No account linked" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">No account linked</SelectItem>
+                        {accounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name} ({account.type})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Cost Summary */}
             {subtotal > 0 && (

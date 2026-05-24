@@ -87,9 +87,10 @@ export const addTransaction = async (transactionData: NewTransaction): Promise<s
         // Use a batch write to ensure both operations succeed or fail together
         const batch = writeBatch(db);
 
-        // 1. Add the main transaction record
+        // 1. Add the main transaction record (strip investmentCharges as they're stored on the investment transaction)
+        const { investmentCharges: _, ...mainTransactionData } = transactionData as Record<string, unknown>;
         const newTransactionDocRef = doc(collection(db, 'transactions'));
-        batch.set(newTransactionDocRef, { ...transactionData, userId, investmentTransactionId: newTransactionDocRef.id });
+        batch.set(newTransactionDocRef, { ...mainTransactionData, userId, investmentTransactionId: newTransactionDocRef.id });
 
         // 2. Update the investment's history
         batch.update(investmentDocRef, { history: newInvestmentHistory });

@@ -187,13 +187,12 @@ export function InvestmentHistorySheet({
                   <TableCell className="text-right font-medium">{formatAmount(item.price, investment.currency)}</TableCell>
                   <TableCell className="text-right font-medium">
                     {(() => {
-                      const sub = item.quantity * item.price;
+                      const invested = item.quantity * item.price;
                       const charges = (item.charges ?? []).reduce((sum, c) =>
-                        sum + (c.type === 'percentage' ? sub * c.value / 100 : c.value), 0);
-                      const total = item.type === 'buy' ? sub + charges : sub - charges;
+                        sum + (c.type === 'percentage' ? invested * c.value / 100 : c.value), 0);
                       return (
-                        <span title={charges > 0 ? `Subtotal: ${formatAmount(sub, investment.currency)} | Charges: ${formatAmount(charges, investment.currency)}` : undefined}>
-                          {formatAmount(total, investment.currency)}
+                        <span title={charges > 0 ? `Charges: ${formatAmount(charges, investment.currency)} | Total deducted: ${formatAmount(invested + charges, investment.currency)}` : undefined}>
+                          {formatAmount(invested, investment.currency)}
                           {charges > 0 && <span className="text-xs text-muted-foreground ml-1">*</span>}
                         </span>
                       );
